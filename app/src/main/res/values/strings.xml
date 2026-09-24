@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">BiteFast</string>
+    <string name="google_maps_api_key" translatable="false">DEFAULT_MAPS_KEY</string>
+</resources>
