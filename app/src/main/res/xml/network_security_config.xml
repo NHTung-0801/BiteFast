@@ -8,8 +8,14 @@
     <domain-config>
         <domain includeSubdomains="true">api.bitefast.com</domain>
         <pin-set expiration="2027-12-31">
-            <pin digest="SHA-256">k2oTQLGenANUdYzs1-Ky5Pznw9XuhxzFuWYHX9CF6Ng=</pin>
+            <pin digest="SHA-256">k2oTQLGenANUdYzs1+Ky5Pznw9XuhxzFuWYHX9CF6Ng=</pin>
             <pin digest="SHA-256">WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=</pin>
         </pin-set>
     </domain-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
 </network-security-config>
