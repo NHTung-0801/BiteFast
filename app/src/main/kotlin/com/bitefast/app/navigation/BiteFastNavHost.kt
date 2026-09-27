@@ -163,7 +163,15 @@ fun BiteFastApp(
                 arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val restaurantId = backStackEntry.arguments?.getString("restaurantId") ?: ""
-                DetailRoute(restaurantId = restaurantId)
+                DetailRoute(
+                    restaurantId = restaurantId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToCart = {
+                        navController.navigate(TopLevelDestination.CART.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
 
             // ── Checkout ──────────────────────────────────────────────────────
@@ -171,7 +179,7 @@ fun BiteFastApp(
                 CheckoutRoute(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToTracking = { orderId ->
-                        navController.navigate("tracking/orderId") {
+                        navController.navigate("tracking/$orderId") {
                             popUpTo(CHECKOUT_ROUTE) { inclusive = true }
                         }
                     }
@@ -184,7 +192,19 @@ fun BiteFastApp(
                 arguments = listOf(navArgument("orderId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
-                TrackingRoute(orderId = orderId)
+                TrackingRoute(
+                    orderId = orderId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToHome = {
+                        navController.navigate(TopLevelDestination.DISCOVERY.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToRating = { id ->
+                        navController.navigate("rating/$id")
+                    }
+                )
             }
 
             // ── Rating ────────────────────────────────────────────────────────

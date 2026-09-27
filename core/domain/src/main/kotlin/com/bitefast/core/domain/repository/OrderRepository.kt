@@ -1,25 +1,27 @@
 ﻿package com.bitefast.core.domain.repository
 
 import com.bitefast.core.model.Order
-import com.bitefast.core.model.OrderStatus
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
-    /** Stream toàn bộ lịch sử đơn hàng theo thời gian giảm dần. */
+    /** Stream toan bo lich su don hang theo thoi gian giam dan. */
     fun getOrderHistory(): Flow<List<Order>>
 
-    /** Stream các đơn hàng đang hoạt động (chưa giao xong / chưa huỷ). */
+    /** Stream cac don hang dang hoat dong (chua giao xong / chua huy). */
     fun getActiveOrders(): Flow<List<Order>>
 
-    /** Stream các đơn hàng đã hoàn thành hoặc đã huỷ. */
+    /** Stream cac don hang da hoan thanh hoac da huy. */
     fun getCompletedOrders(): Flow<List<Order>>
 
-    /** Tạo đơn hàng mới và trả về đơn sau khi server xác nhận. */
+    /** Stream thong tin va trang thai mot don hang theo ID de live tracking. */
+    fun getOrderStream(orderId: String): Flow<Order?>
+
+    /** Tao don hang moi va tra ve don sau khi server xac nhan. */
     suspend fun createOrder(order: Order): Order
 
-    /** Lấy chi tiết một đơn hàng theo ID. */
+    /** Lay chi tiet mot don hang theo ID. */
     suspend fun getOrderDetail(orderId: String): Order?
 
-    /** Huỷ đơn hàng với lý do. */
+    /** Huy don hang voi ly do. */
     suspend fun cancelOrder(orderId: String, reason: String)
 }

@@ -17,4 +17,5 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.coil.compose)
+    implementation(libs.compose.icons.extended)
 }
