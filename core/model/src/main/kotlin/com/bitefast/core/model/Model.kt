@@ -143,9 +143,7 @@ data class Order(
     val feedback: String = "",
     val cancellationReason: String = "",
     val isCanceled: Boolean = false
-) {
-    val statusText: String get() = status.displayName
-}
+)
 
 @Serializable
 enum class OrderStatus {
@@ -155,18 +153,7 @@ enum class OrderStatus {
     READY,
     ON_THE_WAY,
     DELIVERED,
-    CANCELED;
-
-    val displayName: String
-        get() = when (this) {
-            PENDING -> "Chờ xác nhận"
-            CONFIRMED -> "Đã xác nhận"
-            PREPARING -> "Đang chuẩn bị"
-            READY -> "Sẵn sàng"
-            ON_THE_WAY -> "Đang giao"
-            DELIVERED -> "Đã giao"
-            CANCELED -> "Đã hủy"
-        }
+    CANCELED
 }
 
 @Serializable
@@ -174,15 +161,7 @@ enum class PaymentMethod {
     CASH,
     CARD,
     E_WALLET,
-    WALLET;
-
-    val displayName: String
-        get() = when (this) {
-            CASH -> "Tiền mặt"
-            CARD -> "Thẻ tín dụng"
-            E_WALLET -> "Ví điện tử"
-            WALLET -> "Ví BiteFast"
-        }
+    WALLET
 }
 
 @Serializable
@@ -190,15 +169,7 @@ enum class PaymentStatus {
     PENDING,
     PAID,
     FAILED,
-    REFUNDED;
-
-    val displayName: String
-        get() = when (this) {
-            PENDING -> "Chờ thanh toán"
-            PAID -> "Đã thanh toán"
-            FAILED -> "Thất bại"
-            REFUNDED -> "Đã hoàn tiền"
-        }
+    REFUNDED
 }
 
 @Serializable
