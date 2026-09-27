@@ -1,4 +1,4 @@
-﻿package com.bitefast.app.navigation
+package com.bitefast.app.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -153,7 +153,12 @@ fun BiteFastApp(
             // ── Checkout ──────────────────────────────────────────────────────
             composable(CHECKOUT_ROUTE) {
                 CheckoutRoute(
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTracking = { orderId ->
+                        navController.navigate("tracking/orderId") {
+                            popUpTo(CHECKOUT_ROUTE) { inclusive = true }
+                        }
+                    }
                 )
             }
 
