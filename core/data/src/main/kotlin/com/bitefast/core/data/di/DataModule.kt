@@ -1,9 +1,11 @@
 package com.bitefast.core.data.di
 
+import com.bitefast.core.data.repository.AddressRepositoryImpl
 import com.bitefast.core.data.repository.AuthRepositoryImpl
 import com.bitefast.core.data.repository.CartRepositoryImpl
 import com.bitefast.core.data.repository.OrderRepositoryImpl
 import com.bitefast.core.data.repository.RestaurantRepositoryImpl
+import com.bitefast.core.domain.repository.AddressRepository
 import com.bitefast.core.domain.repository.AuthRepository
 import com.bitefast.core.domain.repository.CartRepository
 import com.bitefast.core.domain.repository.OrderRepository
@@ -33,4 +35,8 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindOrderRepository(impl: OrderRepositoryImpl): OrderRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAddressRepository(impl: AddressRepositoryImpl): AddressRepository
 }
