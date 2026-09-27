@@ -4,6 +4,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+android {
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
@@ -15,4 +23,9 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.junit5)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }
