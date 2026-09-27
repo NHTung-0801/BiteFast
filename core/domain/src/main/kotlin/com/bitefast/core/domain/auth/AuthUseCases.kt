@@ -1,4 +1,4 @@
-package com.bitefast.core.domain.auth
+﻿package com.bitefast.core.domain.auth
 
 import com.bitefast.core.domain.repository.AuthRepository
 import com.bitefast.core.model.User
@@ -26,6 +26,14 @@ class LogoutUseCase @Inject constructor(
 ) {
     suspend operator fun invoke() {
         authRepository.logout()
+    }
+}
+
+class EnableGuestModeUseCase @Inject constructor(
+    private val authRepository: AuthRepository
+) {
+    suspend operator fun invoke() {
+        authRepository.enableGuestMode()
     }
 }
 

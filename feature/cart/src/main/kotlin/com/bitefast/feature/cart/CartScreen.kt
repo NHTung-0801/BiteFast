@@ -1,4 +1,4 @@
-package com.bitefast.feature.cart
+﻿package com.bitefast.feature.cart
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,8 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitefast.core.designsystem.component.BiteFastButton
 import com.bitefast.core.designsystem.component.EmptyState
 import com.bitefast.core.designsystem.component.QuantitySelector
 import com.bitefast.core.designsystem.theme.OrangePrimary
@@ -95,7 +95,7 @@ fun CartScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Tạm tính", style = MaterialTheme.typography.bodyMedium)
-                            Text("%,.0f ₫".format(uiState.subtotal), style = MaterialTheme.typography.bodyMedium)
+                            Text("%,.0f đ".format(uiState.subtotal), style = MaterialTheme.typography.bodyMedium)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
@@ -103,7 +103,7 @@ fun CartScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Phí giao hàng", style = MaterialTheme.typography.bodyMedium)
-                            Text("%,.0f ₫".format(uiState.deliveryFee), style = MaterialTheme.typography.bodyMedium)
+                            Text("%,.0f đ".format(uiState.deliveryFee), style = MaterialTheme.typography.bodyMedium)
                         }
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         Row(
@@ -112,32 +112,42 @@ fun CartScreen(
                         ) {
                             Text("Tổng thanh toán", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "%,.0f ₫".format(uiState.total),
+                                "%,.0f đ".format(uiState.total),
                                 style = MaterialTheme.typography.titleLarge,
                                 color = OrangePrimary
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(
+                        BiteFastButton(
+                            text = "Tiến hành thanh toán",
                             onClick = { onEvent(CartUiEvent.Checkout) },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                        ) {
-                            Text("Tiến hành thanh toán")
-                        }
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
         }
     ) { paddingValues ->
         if (uiState.items.isEmpty()) {
-            EmptyState(
-                title = "Giỏ hàng đang trống",
-                subtitle = "Hãy chọn những món ăn ngon từ BiteFast nhé!",
-                modifier = Modifier.padding(paddingValues)
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                EmptyState(
+                    title = "Giỏ hàng đang trống",
+                    subtitle = "Hãy chọn những món ăn ngon từ BiteFast nhé!"
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                BiteFastButton(
+                    text = "Thêm món mẫu vào giỏ hàng",
+                    leadingIcon = Icons.Default.ShoppingCart,
+                    onClick = { onEvent(CartUiEvent.AddSampleItem) }
+                )
+            }
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -162,15 +172,15 @@ fun CartScreen(
                                 Text(item.name, style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "%,.0f ₫".format(item.price),
+                                    "%,.0f đ".format(item.price),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = OrangePrimary
                                 )
                             }
                             QuantitySelector(
                                 quantity = item.quantity,
-                                onIncrease = { onEvent(CartUiEvent.IncreaseQuantity(item.menuItemId, item.quantity)) },
-                                onDecrease = { onEvent(CartUiEvent.DecreaseQuantity(item.menuItemId, item.quantity)) }
+                                onIncrease = { onEvent(CartUiEvent.IncreaseQuantity(item.id, item.quantity)) },
+                                onDecrease = { onEvent(CartUiEvent.DecreaseQuantity(item.id, item.quantity)) }
                             )
                         }
                     }

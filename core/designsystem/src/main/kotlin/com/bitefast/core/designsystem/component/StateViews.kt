@@ -1,4 +1,4 @@
-package com.bitefast.core.designsystem.component
+﻿package com.bitefast.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,7 +35,7 @@ fun ErrorState(
 ) {
     Column(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -72,7 +71,7 @@ fun EmptyState(
 ) {
     Column(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -116,7 +115,7 @@ fun OfflineBanner(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Không có kết nối Internet • Đang tự động thử lại...",
+                text = "Không có kết nối Internet — Đang tự động thử lại...",
                 color = Color.White,
                 style = MaterialTheme.typography.labelMedium
             )

@@ -1,4 +1,4 @@
-package com.bitefast.feature.cart
+﻿package com.bitefast.feature.cart
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -29,6 +29,7 @@ sealed interface CartUiEvent : UiEvent {
     data class DecreaseQuantity(val itemId: String, val currentQuantity: Int) : CartUiEvent
     data object ClearCart : CartUiEvent
     data object Checkout : CartUiEvent
+    data object AddSampleItem : CartUiEvent
 }
 
 sealed interface CartUiEffect : UiEffect {
@@ -78,6 +79,18 @@ class CartViewModel @Inject constructor(
             is CartUiEvent.Checkout -> {
                 if (uiState.value.items.isNotEmpty()) {
                     sendEffect(CartUiEffect.NavigateToCheckout)
+                }
+            }
+            is CartUiEvent.AddSampleItem -> {
+                viewModelScope.launch {
+                    val sampleItem = CartItem(
+                        id = "cart_sample_1",
+                        restaurantId = "res_1",
+                        name = "Cơm Tấm Sườn Bì Chả Đặc Biệt",
+                        price = 65000.0,
+                        quantity = 1
+                    )
+                    cartRepository.addItem(sampleItem)
                 }
             }
         }
