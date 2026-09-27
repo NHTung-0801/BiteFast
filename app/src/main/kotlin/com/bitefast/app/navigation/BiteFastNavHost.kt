@@ -45,6 +45,7 @@ import com.bitefast.feature.discovery.DiscoveryRoute
 import com.bitefast.feature.order.OrderRoute
 import com.bitefast.feature.profile.ProfileRoute
 import com.bitefast.feature.rating.RatingRoute
+import com.bitefast.feature.notification.NotificationRoute
 import com.bitefast.feature.tracking.TrackingRoute
 
 // ─── Route constants ──────────────────────────────────────────────────────────
@@ -52,6 +53,7 @@ const val DETAIL_ROUTE = "detail/{restaurantId}"
 const val CHECKOUT_ROUTE = "checkout"
 const val TRACKING_ROUTE = "tracking/{orderId}"
 const val RATING_ROUTE = "rating/{orderId}"
+const val NOTIFICATION_ROUTE = "notification"
 
 /** Route destinations có bottom bar ẩn đi. */
 private val ROUTES_WITHOUT_BOTTOM_BAR = setOf(
@@ -60,6 +62,7 @@ private val ROUTES_WITHOUT_BOTTOM_BAR = setOf(
     "detail/{restaurantId}",
     "tracking/{orderId}",
     "rating/{orderId}",
+    "notification",
 )
 
 // ─── Top-level destinations ───────────────────────────────────────────────────
@@ -213,7 +216,19 @@ fun BiteFastApp(
                 arguments = listOf(navArgument("orderId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
-                RatingRoute(orderId = orderId)
+                RatingRoute(
+                    orderId = orderId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(NOTIFICATION_ROUTE) {
+                NotificationRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToOrder = { orderId ->
+                        navController.navigate("tracking/$orderId")
+                    }
+                )
             }
 
             // ── Auth ──────────────────────────────────────────────────────────
