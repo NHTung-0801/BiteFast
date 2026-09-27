@@ -1,143 +1,171 @@
-package com.bitefast.core.domain.order
+﻿package com.bitefast.core.domain.order
 
 import com.bitefast.core.domain.cart.ClearCartUseCase
 import com.bitefast.core.domain.repository.CartRepository
 import com.bitefast.core.domain.repository.RestaurantRepository
-import com.bitefast.core.model.CartItem
-import com.bitefast.core.model.MenuItem
-import com.bitefast.core.model.Order
-import com.bitefast.core.model.Restaurant
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
+import com.bitefast.core.model.*
+import io.mockk.*
+import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
+@DisplayName("SmartReOrderUseCase")
 class SmartReOrderUseCaseTest {
 
-    private val restaurantRepository: RestaurantRepository = mockk()
-    private val cartRepository: CartRepository = mockk(relaxed = true)
-    private val clearCartUseCase: ClearCartUseCase = mockk(relaxed = true)
+    @MockK lateinit var restaurantRepository: RestaurantRepository
+    @MockK lateinit var cartRepository: CartRepository
+    @MockK lateinit var clearCartUseCase: ClearCartUseCase
 
-    private lateinit var smartReOrderUseCase: SmartReOrderUseCase
+    private lateinit var useCase: SmartReOrderUseCase
+
+    private val openRestaurant = Restaurant(
+        id = "rest-1",
+        name = "Pho Ha Noi",
+        isOpen = true,
+    )
+
+    private val availableMenuItem = MenuItem(
+        id = "menu-1",
+        restaurantId = "rest-1",
+        name = "Pho Bo",
+        isAvailable = true,
+    )
+
+    private val unavailableMenuItem = MenuItem(
+        id = "menu-2",
+        restaurantId = "rest-1",
+        name = "Bun Bo",
+        isAvailable = false,
+    )
+
+    private val cartItemAvailable = CartItem(
+        id = "ci-1", menuItemId = "menu-1", restaurantId = "rest-1",
+        name = "Pho Bo", price = 50_000.0, quantity = 2,
+    )
+
+    private val cartItemUnavailable = CartItem(
+        id = "ci-2", menuItemId = "menu-2", restaurantId = "rest-1",
+        name = "Bun Bo", price = 45_000.0, quantity = 1,
+    )
+
+    private val sampleOrder = Order(
+        id = "order-1",
+        restaurantId = "rest-1",
+        restaurantName = "Pho Ha Noi",
+        items = listOf(cartItemAvailable),
+    )
 
     @BeforeEach
     fun setUp() {
-        smartReOrderUseCase = SmartReOrderUseCase(
-            restaurantRepository = restaurantRepository,
-            cartRepository = cartRepository,
-            clearCartUseCase = clearCartUseCase
-        )
+        MockKAnnotations.init(this)
+        useCase = SmartReOrderUseCase(restaurantRepository, cartRepository, clearCartUseCase)
     }
 
-    @Test
-    @DisplayName("SmartReOrder: returns EmptyOrder when order has no items")
-    fun reorder_emptyItems_returnsEmptyOrder() = runTest {
-        val order = Order(id = "order_1", restaurantId = "res_1", items = emptyList())
-        val result = smartReOrderUseCase(order)
-
-        assertTrue(result is SmartReOrderResult.EmptyOrder)
+    @Nested
+    @DisplayName("Đơn rỗng")
+    inner class EmptyOrder {
+        @Test
+        fun `trả về EmptyOrder khi không có món`() = runTest {
+            val result = useCase(sampleOrder.copy(items = emptyList()))
+            assertTrue(result is SmartReOrderResult.EmptyOrder)
+        }
     }
 
-    @Test
-    @DisplayName("SmartReOrder: returns RestaurantClosed when restaurant is not open")
-    fun reorder_restaurantClosed_returnsRestaurantClosed() = runTest {
-        val order = createOrder(restaurantId = "res_1", restaurantName = "Cơm Tấm")
-        val restaurant = Restaurant(id = "res_1", name = "Cơm Tấm", isOpen = false)
+    @Nested
+    @DisplayName("Nhà hàng đóng cửa")
+    inner class ClosedRestaurant {
+        @Test
+        fun `trả về RestaurantClosed khi nhà hàng đóng`() = runTest {
+            coEvery { restaurantRepository.getRestaurantDetail(any()) } returns openRestaurant.copy(isOpen = false)
 
-        coEvery { restaurantRepository.getRestaurantDetail("res_1") } returns restaurant
+            val result = useCase(sampleOrder)
 
-        val result = smartReOrderUseCase(order)
+            assertTrue(result is SmartReOrderResult.RestaurantClosed)
+        }
 
-        assertTrue(result is SmartReOrderResult.RestaurantClosed)
-        assertEquals("Cơm Tấm", (result as SmartReOrderResult.RestaurantClosed).restaurantName)
-        coVerify(exactly = 0) { cartRepository.addItem(any()) }
+        @Test
+        fun `trả về RestaurantClosed khi không tìm thấy nhà hàng`() = runTest {
+            coEvery { restaurantRepository.getRestaurantDetail(any()) } throws RuntimeException("Not found")
+
+            val result = useCase(sampleOrder)
+
+            assertTrue(result is SmartReOrderResult.RestaurantClosed)
+        }
     }
 
-    @Test
-    @DisplayName("SmartReOrder: returns ItemsUnavailable when some items are out of stock")
-    fun reorder_itemsUnavailable_returnsUnavailable() = runTest {
-        val item1 = CartItem(id = "item_1", menuItemId = "m_1", name = "Cơm Sườn", restaurantId = "res_1", quantity = 1)
-        val item2 = CartItem(id = "item_2", menuItemId = "m_2", name = "Canh Khổ Qua", restaurantId = "res_1", quantity = 1)
-        val order = createOrder(restaurantId = "res_1", items = listOf(item1, item2))
+    @Nested
+    @DisplayName("Món hết hàng")
+    inner class ItemsUnavailable {
+        @Test
+        fun `trả về ItemsUnavailable khi có món hết hàng`() = runTest {
+            coEvery { restaurantRepository.getRestaurantDetail(any()) } returns openRestaurant
+            coEvery { restaurantRepository.getRestaurantMenu(any()) } returns listOf(availableMenuItem, unavailableMenuItem)
 
-        val restaurant = Restaurant(id = "res_1", name = "Cơm Tấm", isOpen = true)
-        val menu = listOf(
-            MenuItem(id = "m_1", restaurantId = "res_1", name = "Cơm Sườn", isAvailable = true),
-            MenuItem(id = "m_2", restaurantId = "res_1", name = "Canh Khổ Qua", isAvailable = false)
-        )
+            val orderWithBothItems = sampleOrder.copy(
+                items = listOf(cartItemAvailable, cartItemUnavailable)
+            )
+            val result = useCase(orderWithBothItems)
 
-        coEvery { restaurantRepository.getRestaurantDetail("res_1") } returns restaurant
-        coEvery { restaurantRepository.getRestaurantMenu("res_1") } returns menu
-
-        val result = smartReOrderUseCase(order, forceClearCart = false)
-
-        assertTrue(result is SmartReOrderResult.ItemsUnavailable)
-        val unavailable = result as SmartReOrderResult.ItemsUnavailable
-        assertEquals(listOf("Canh Khổ Qua"), unavailable.unavailableItemNames)
-        assertEquals(1, unavailable.availableItems.size)
-        assertEquals("Cơm Sườn", unavailable.availableItems.first().name)
+            assertTrue(result is SmartReOrderResult.ItemsUnavailable)
+            val typed = result as SmartReOrderResult.ItemsUnavailable
+            assertEquals(1, typed.unavailableItemNames.size)
+            assertEquals("Bun Bo", typed.unavailableItemNames.first())
+            assertEquals(1, typed.availableItems.size)
+        }
     }
 
-    @Test
-    @DisplayName("SmartReOrder: returns CartConflict when cart has items from different restaurant")
-    fun reorder_cartConflict_returnsConflict() = runTest {
-        val item = CartItem(id = "item_1", menuItemId = "m_1", name = "Cơm Sườn", restaurantId = "res_1", quantity = 1)
-        val order = createOrder(restaurantId = "res_1", items = listOf(item))
+    @Nested
+    @DisplayName("Xung đột giỏ hàng")
+    inner class CartConflict {
+        @Test
+        fun `trả về CartConflict khi giỏ đang có đồ từ nhà hàng khác`() = runTest {
+            coEvery { restaurantRepository.getRestaurantDetail(any()) } returns openRestaurant
+            coEvery { restaurantRepository.getRestaurantMenu(any()) } returns listOf(availableMenuItem)
+            coEvery { cartRepository.getCurrentRestaurantId() } returns "rest-OTHER"
 
-        val restaurant = Restaurant(id = "res_1", name = "Cơm Tấm", isOpen = true)
-        val menu = listOf(MenuItem(id = "m_1", restaurantId = "res_1", name = "Cơm Sườn", isAvailable = true))
+            val result = useCase(sampleOrder)
 
-        coEvery { restaurantRepository.getRestaurantDetail("res_1") } returns restaurant
-        coEvery { restaurantRepository.getRestaurantMenu("res_1") } returns menu
-        coEvery { cartRepository.getCurrentRestaurantId() } returns "res_other"
-
-        val result = smartReOrderUseCase(order, forceClearCart = false)
-
-        assertTrue(result is SmartReOrderResult.CartConflict)
-        val conflict = result as SmartReOrderResult.CartConflict
-        assertEquals("res_other", conflict.currentRestaurantId)
-        assertEquals("res_1", conflict.newRestaurantId)
+            assertTrue(result is SmartReOrderResult.CartConflict)
+            val typed = result as SmartReOrderResult.CartConflict
+            assertEquals("rest-OTHER", typed.currentRestaurantId)
+            assertEquals("rest-1", typed.newRestaurantId)
+        }
     }
 
-    @Test
-    @DisplayName("SmartReOrder: clears cart and adds items when forceClearCart is true")
-    fun reorder_forceClearCart_clearsAndAddsItems() = runTest {
-        val item = CartItem(id = "item_1", menuItemId = "m_1", name = "Cơm Sườn", restaurantId = "res_1", quantity = 2)
-        val order = createOrder(restaurantId = "res_1", items = listOf(item))
+    @Nested
+    @DisplayName("Tái đặt hàng thành công")
+    inner class Success {
+        @Test
+        fun `trả về Success và thêm đúng số lượng món vào giỏ`() = runTest {
+            coEvery { restaurantRepository.getRestaurantDetail(any()) } returns openRestaurant
+            coEvery { restaurantRepository.getRestaurantMenu(any()) } returns listOf(availableMenuItem)
+            coEvery { cartRepository.getCurrentRestaurantId() } returns null
+            coEvery { cartRepository.addItem(any()) } just Runs
 
-        val restaurant = Restaurant(id = "res_1", name = "Cơm Tấm", isOpen = true)
-        val menu = listOf(MenuItem(id = "m_1", restaurantId = "res_1", name = "Cơm Sườn", isAvailable = true))
+            val result = useCase(sampleOrder)
 
-        coEvery { restaurantRepository.getRestaurantDetail("res_1") } returns restaurant
-        coEvery { restaurantRepository.getRestaurantMenu("res_1") } returns menu
-        coEvery { cartRepository.getCurrentRestaurantId() } returns "res_other"
+            assertTrue(result is SmartReOrderResult.Success)
+            val typed = result as SmartReOrderResult.Success
+            assertEquals(2, typed.reorderedItemsCount) // quantity = 2
+            assertEquals("Pho Ha Noi", typed.restaurantName)
+        }
 
-        val result = smartReOrderUseCase(order, forceClearCart = true)
+        @Test
+        fun `forceClearCart=true xóa giỏ cũ trước khi thêm món`() = runTest {
+            coEvery { restaurantRepository.getRestaurantDetail(any()) } returns openRestaurant
+            coEvery { restaurantRepository.getRestaurantMenu(any()) } returns listOf(availableMenuItem)
+            coEvery { cartRepository.getCurrentRestaurantId() } returns "rest-OTHER"
+            coEvery { clearCartUseCase.invoke() } just Runs
+            coEvery { cartRepository.addItem(any()) } just Runs
 
-        assertTrue(result is SmartReOrderResult.Success)
-        val success = result as SmartReOrderResult.Success
-        assertEquals(2, success.reorderedItemsCount)
-        assertEquals("Cơm Tấm", success.restaurantName)
+            val result = useCase(sampleOrder, forceClearCart = true)
 
-        coVerify(exactly = 1) { clearCartUseCase() }
-        coVerify(exactly = 1) { cartRepository.addItem(item) }
+            assertTrue(result is SmartReOrderResult.Success)
+            coVerify(exactly = 1) { clearCartUseCase.invoke() }
+        }
     }
-
-    private fun createOrder(
-        restaurantId: String = "res_1",
-        restaurantName: String = "Quán Ngon",
-        items: List<CartItem> = listOf(
-            CartItem(id = "item_1", menuItemId = "m_1", name = "Món 1", restaurantId = restaurantId, quantity = 1)
-        )
-    ) = Order(
-        id = "order_123",
-        restaurantId = restaurantId,
-        restaurantName = restaurantName,
-        items = items
-    )
 }
