@@ -51,6 +51,8 @@ fun BiteFastTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = BiteFastTypography,
+        shapes = BiteFastShapes,
         content = content
     )
 }

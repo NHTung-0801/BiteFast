@@ -1,6 +1,7 @@
 package com.bitefast.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -95,6 +97,11 @@ fun OfflineBanner(
     isOffline: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val bannerColor by animateColorAsState(
+        targetValue = if (isOffline) ErrorRed else SuccessGreen,
+        label = "offlineBannerColor"
+    )
+
     AnimatedVisibility(
         visible = isOffline,
         enter = slideInVertically(),
@@ -104,12 +111,12 @@ fun OfflineBanner(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(ErrorRed)
+                .background(bannerColor)
                 .padding(vertical = 8.dp, horizontal = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Không có kết nối Internet — Đang tự động thử lại...",
+                text = "Không có kết nối Internet • Đang tự động thử lại...",
                 color = Color.White,
                 style = MaterialTheme.typography.labelMedium
             )

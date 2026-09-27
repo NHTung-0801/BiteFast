@@ -19,6 +19,10 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
+/**
+ * Accessible stepper component meeting WCAG 2.1 AA touch target (48dp x 48dp)
+ * and providing TalkBack custom accessibility actions for blind users.
+ */
 @Composable
 fun QuantitySelector(
     quantity: Int,

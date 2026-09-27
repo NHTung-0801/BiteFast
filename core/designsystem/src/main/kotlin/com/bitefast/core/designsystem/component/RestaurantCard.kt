@@ -29,6 +29,9 @@ import coil.compose.AsyncImage
 import com.bitefast.core.designsystem.theme.OrangePrimary
 import com.bitefast.core.model.Restaurant
 
+/**
+ * Enterprise accessible Restaurant Card adhering to WCAG 2.1 AA screen reader standards.
+ */
 @Composable
 fun RestaurantCard(
     restaurant: Restaurant,
