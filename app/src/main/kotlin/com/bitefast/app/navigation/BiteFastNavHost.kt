@@ -133,12 +133,28 @@ fun BiteFastApp(
 
             // ── Tab 3: Orders ─────────────────────────────────────────────────
             composable(TopLevelDestination.ORDERS.route) {
-                OrderRoute()
+                OrderRoute(
+                    onNavigateToTracking = { orderId ->
+                        navController.navigate("tracking/$orderId")
+                    },
+                    onNavigateToDetail = { restaurantId ->
+                        navController.navigate("detail/$restaurantId")
+                    }
+                )
             }
 
             // ── Tab 4: Profile ────────────────────────────────────────────────
             composable(TopLevelDestination.PROFILE.route) {
-                ProfileRoute()
+                ProfileRoute(
+                    onNavigateToLogin = {
+                        navController.navigateToLogin()
+                    },
+                    onNavigateToOrderHistory = {
+                        navController.navigate(TopLevelDestination.ORDERS.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
 
             // ── Detail ────────────────────────────────────────────────────────
