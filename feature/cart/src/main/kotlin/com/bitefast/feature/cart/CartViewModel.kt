@@ -9,6 +9,7 @@ import com.bitefast.core.common.UiState
 import com.bitefast.core.domain.cart.GetCartUseCase
 import com.bitefast.core.domain.cart.UpdateCartQuantityUseCase
 import com.bitefast.core.domain.repository.CartRepository
+import com.bitefast.core.domain.voucher.GetBestVoucherUseCase
 import com.bitefast.core.model.CartItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -19,6 +20,8 @@ import javax.inject.Inject
 data class CartUiState(
     val isLoading: Boolean = false,
     val items: List<CartItem> = emptyList(),
+    val bestVoucherMessage: String? = null,
+    val voucherUpsellMessage: String? = null,
     /** True khi co them item tu nha hang khac vao gio hang */
     val showConflictDialog: Boolean = false,
     val conflictRestaurantName: String = "",
@@ -59,6 +62,7 @@ sealed interface CartUiEffect : UiEffect {
 class CartViewModel @Inject constructor(
     private val getCartUseCase: GetCartUseCase,
     private val updateCartQuantityUseCase: UpdateCartQuantityUseCase,
+    private val getBestVoucherUseCase: GetBestVoucherUseCase,
     private val cartRepository: CartRepository,
     savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<CartUiState, CartUiEvent, CartUiEffect>(
@@ -71,6 +75,29 @@ class CartViewModel @Inject constructor(
         viewModelScope.launch {
             getCartUseCase().collect { items ->
                 updateState { it.copy(items = items) }
+                checkVouchers(items)
+            }
+        }
+    }
+
+    private fun checkVouchers(items: List<CartItem>) {
+        if (items.isEmpty()) {
+            updateState { it.copy(bestVoucherMessage = null, voucherUpsellMessage = null) }
+            return
+        }
+        val subtotal = items.sumOf { it.totalPrice }
+        val restaurantId = items.first().restaurantId
+        viewModelScope.launch {
+            val result = getBestVoucherUseCase(
+                subtotal = subtotal,
+                restaurantId = restaurantId,
+                deliveryFee = 15_000.0
+            )
+            updateState {
+                it.copy(
+                    bestVoucherMessage = result.message,
+                    voucherUpsellMessage = result.upsellMessage
+                )
             }
         }
     }
@@ -87,7 +114,7 @@ class CartViewModel @Inject constructor(
 
             is CartUiEvent.ClearCart -> viewModelScope.launch {
                 cartRepository.clearCart()
-                sendEffect(CartUiEffect.ShowSnackbar("Da xoa gio hang"))
+                sendEffect(CartUiEffect.ShowSnackbar("Đã xóa giỏ hàng"))
             }
 
             is CartUiEvent.Checkout -> {
@@ -100,7 +127,7 @@ class CartViewModel @Inject constructor(
                 val sampleItem = CartItem(
                     id = "cart_sample_${System.currentTimeMillis()}",
                     restaurantId = "res_sample_1",
-                    name = "Com Tam Suon Bi Cha Dac Biet",
+                    name = "Cơm Tấm Sườn Bì Chả Đặc Biệt",
                     price = 65_000.0,
                     quantity = 1,
                 )

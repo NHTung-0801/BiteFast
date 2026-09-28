@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":feature:profile"))
     implementation(project(":feature:rating"))
     implementation(project(":feature:notification"))
+    implementation(project(":feature:voucher"))
 
     implementation(libs.compose.icons.extended)
     implementation(libs.androidx.core.ktx)

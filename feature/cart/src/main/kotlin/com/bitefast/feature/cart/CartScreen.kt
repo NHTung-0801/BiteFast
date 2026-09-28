@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
@@ -35,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -59,9 +61,10 @@ import com.bitefast.core.designsystem.component.BiteFastButton
 import com.bitefast.core.designsystem.component.EmptyState
 import com.bitefast.core.designsystem.component.QuantitySelector
 import com.bitefast.core.designsystem.theme.OrangePrimary
+import com.bitefast.core.designsystem.theme.WarningAmber
 import com.bitefast.core.model.CartItem
 
-// ─── Route ────────────────────────────────────────────────────────────────────
+// --- Route --------------------------------------------------------------------
 
 @Composable
 fun CartRoute(
@@ -87,7 +90,7 @@ fun CartRoute(
     )
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// --- Screen -------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,10 +114,10 @@ fun CartScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Gio hang cua ban", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                        Text("Gi? hàng c?a b?n", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                         AnimatedVisibility(visible = uiState.itemCount > 0) {
                             Text(
-                                "${uiState.itemCount} mon",
+                                "${uiState.itemCount} món",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -122,14 +125,9 @@ fun CartScreen(
                     }
                 },
                 actions = {
-                    AnimatedVisibility(visible = uiState.items.isNotEmpty()) {
-                        IconButton(
-                            onClick = { onEvent(CartUiEvent.ClearCart) },
-                            modifier = Modifier
-                                .size(48.dp)
-                                .semantics { contentDescription = "Xóa toàn bộ giỏ hàng" }
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    if (uiState.items.isNotEmpty()) {
+                        IconButton(onClick = { onEvent(CartUiEvent.ClearCart) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Xóa t?t c?", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 },
@@ -142,37 +140,20 @@ fun CartScreen(
                 enter = fadeIn(tween(200)),
                 exit = fadeOut(tween(200)),
             ) {
-                CartSummaryBar(uiState = uiState, onEvent = onEvent)
+                CartBottomBar(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                )
             }
         },
     ) { paddingValues ->
         if (uiState.items.isEmpty()) {
-            // Empty state
-            Column(
+            EmptyCartView(
+                onAddSample = { onEvent(CartUiEvent.AddSampleItem) },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ShoppingCart,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.outlineVariant,
-                    modifier = Modifier.size(80.dp),
-                )
-                Spacer(Modifier.height(16.dp))
-                EmptyState(
-                    title = "Gio hang dang trong",
-                    subtitle = "Hay chon nhung mon an ngon tu BiteFast nhe!",
-                )
-                Spacer(Modifier.height(20.dp))
-                BiteFastButton(
-                    text = "Them mon mau vao gio hang",
-                    onClick = { onEvent(CartUiEvent.AddSampleItem) },
-                )
-            }
+                    .padding(paddingValues),
+            )
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -185,10 +166,20 @@ fun CartScreen(
                 item(key = "restaurant_header") {
                     uiState.items.firstOrNull()?.let { first ->
                         Text(
-                            text = "Tu: ${first.restaurantId}",
+                            text = "T?: ${first.restaurantId}",
                             style = MaterialTheme.typography.labelMedium,
                             color = OrangePrimary,
                             modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                    }
+                }
+
+                // Smart voucher suggestion / upsell banner
+                if (!uiState.bestVoucherMessage.isNullOrBlank() || !uiState.voucherUpsellMessage.isNullOrBlank()) {
+                    item(key = "voucher_banner") {
+                        VoucherCartBanner(
+                            bestVoucher = uiState.bestVoucherMessage,
+                            upsell = uiState.voucherUpsellMessage
                         )
                     }
                 }
@@ -201,12 +192,83 @@ fun CartScreen(
                         modifier = Modifier.animateItem(),
                     )
                 }
+
+                item(key = "price_breakdown") {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PriceRow("T?m tính", uiState.subtotal)
+                            PriceRow("Phí giao hàng", uiState.deliveryFee)
+                            if (uiState.discount > 0) {
+                                PriceRow("Gi?m giá", -uiState.discount, isHighlight = true)
+                            }
+                            HorizontalDivider()
+                            PriceRow("T?ng c?ng", uiState.total, isHighlight = true)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-// ─── Cart Item Card ───────────────────────────────────────────────────────────
+// --- Voucher Cart Banner ------------------------------------------------------
+
+@Composable
+private fun VoucherCartBanner(
+    bestVoucher: String?,
+    upsell: String?
+) {
+    if (!bestVoucher.isNullOrBlank()) {
+        Surface(
+            color = OrangePrimary.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ConfirmationNumber,
+                    contentDescription = null,
+                    tint = OrangePrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = bestVoucher,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = OrangePrimary
+                )
+            }
+        }
+    } else if (!upsell.isNullOrBlank()) {
+        Surface(
+            color = WarningAmber.copy(alpha = 0.12f),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("??", modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = upsell,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = WarningAmber
+                )
+            }
+        }
+    }
+}
+
+// --- Cart Item Card -----------------------------------------------------------
 
 @Composable
 private fun CartItemCard(
@@ -216,34 +278,30 @@ private fun CartItemCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize()
-            .semantics { contentDescription = "${item.name}, so luong ${item.quantity}, ${"%,.0f".format(item.totalPrice)} dong" },
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+                .padding(12.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Thumbnail
-            if (item.imageUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
-                Spacer(Modifier.width(12.dp))
-            }
+            // Food image
+            AsyncImage(
+                model = item.imageUrl.ifBlank { "https://images.unsplash.com/photo-1546069901-ba9599a7e63c" },
+                contentDescription = item.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(RoundedCornerShape(10.dp)),
+            )
 
+            Spacer(Modifier.width(12.dp))
+
+            // Details
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name,
@@ -251,9 +309,9 @@ private fun CartItemCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (item.notes.isNotEmpty()) {
+                if (item.notes.isNotBlank()) {
                     Text(
-                        text = "Ghi chu: ${item.notes}",
+                        text = item.notes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -262,7 +320,7 @@ private fun CartItemCard(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "%,.0f d".format(item.totalPrice),
+                    text = "%,.0fd".format(item.totalPrice),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = OrangePrimary,
                 )
@@ -270,19 +328,52 @@ private fun CartItemCard(
 
             Spacer(Modifier.width(8.dp))
 
+            // Quantity selector
             QuantitySelector(
                 quantity = item.quantity,
                 onIncrease = onIncrease,
                 onDecrease = onDecrease,
+                
             )
         }
     }
 }
 
-// ─── Cart Summary BottomBar ───────────────────────────────────────────────────
+// --- Empty State --------------------------------------------------------------
 
 @Composable
-private fun CartSummaryBar(
+private fun EmptyCartView(
+    onAddSample: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(24.dp),
+        ) {
+            EmptyState(
+                title = "Gi? hàng tr?ng",
+                subtitle = "B?n chua có món an nào trong gi? hàng. Hãy khám phá th?c don h?p d?n nhé!",
+            )
+            BiteFastButton(
+                text = "Thêm món an m?u",
+                onClick = onAddSample,
+                modifier = Modifier
+                    .width(200.dp)
+                    .semantics { contentDescription = "Them mon mau" },
+            )
+        }
+    }
+}
+
+// --- Cart Bottom Bar ----------------------------------------------------------
+
+@Composable
+private fun CartBottomBar(
     uiState: CartUiState,
     onEvent: (CartUiEvent) -> Unit,
 ) {
@@ -292,30 +383,26 @@ private fun CartSummaryBar(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-            PriceRow("Tam tinh", uiState.subtotal)
-            Spacer(Modifier.height(4.dp))
-            PriceRow("Phi giao hang", uiState.deliveryFee)
-            if (uiState.discount > 0) {
-                Spacer(Modifier.height(4.dp))
-                PriceRow("Giam gia", -uiState.discount, isHighlight = true)
-            }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Tong thanh toan", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text("T?ng thanh toán", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Text(
-                    text = "%,.0f d".format(uiState.total),
+                    text = "%,.0fd".format(uiState.total),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                     color = OrangePrimary,
                 )
             }
             Spacer(Modifier.height(12.dp))
             BiteFastButton(
-                text = "Tien hanh thanh toan",
+                text = "Ti?n hành thanh toán",
                 onClick = { onEvent(CartUiEvent.Checkout) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -331,14 +418,14 @@ private fun PriceRow(label: String, amount: Double, isHighlight: Boolean = false
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
-            text = "%,.0f d".format(amount),
+            text = "%,.0fd".format(amount),
             style = MaterialTheme.typography.bodyMedium,
             color = if (isHighlight) OrangePrimary else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
-// ─── Restaurant Conflict Dialog ───────────────────────────────────────────────
+// --- Restaurant Conflict Dialog -----------------------------------------------
 
 @Composable
 fun RestaurantConflictDialog(
@@ -352,24 +439,24 @@ fun RestaurantConflictDialog(
             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
         },
         title = {
-            Text("Gio hang tu nha hang khac", style = MaterialTheme.typography.titleLarge)
+            Text("Gi? hàng t? nhà hàng khác", style = MaterialTheme.typography.titleLarge)
         },
         text = {
             Text(
-                "Ban dang co mon an tu \"$currentRestaurantName\" trong gio hang. " +
-                    "Them mon tu nha hang khac se xoa gio hang hien tai. Ban co muon tiep tuc?",
+                "B?n dang có món an t? \"$currentRestaurantName\" trong gi? hàng. " +
+                    "Thêm món t? nhà hàng khác s? xóa gi? hàng hi?n t?i. B?n có mu?n ti?p t?c?",
                 style = MaterialTheme.typography.bodyMedium,
             )
         },
         confirmButton = {
             BiteFastButton(
-                text = "Xoa va them moi",
+                text = "Xóa và thêm m?i",
                 onClick = onConfirm,
             )
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Giu nguyen")
+                Text("Gi? nguyên")
             }
         },
     )

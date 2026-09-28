@@ -1,4 +1,4 @@
-package com.bitefast.feature.checkout
+﻿package com.bitefast.feature.checkout
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -10,10 +10,15 @@ import com.bitefast.core.domain.cart.GetCartUseCase
 import com.bitefast.core.domain.order.CheckoutOrderUseCase
 import com.bitefast.core.domain.order.CheckoutResult
 import com.bitefast.core.domain.repository.CartRepository
+import com.bitefast.core.domain.voucher.ApplyVoucherUseCase
+import com.bitefast.core.domain.voucher.GetBestVoucherUseCase
+import com.bitefast.core.domain.voucher.GetVoucherWalletUseCase
+import com.bitefast.core.domain.voucher.VoucherValidationResult
+import com.bitefast.core.domain.voucher.VoucherWalletItem
 import com.bitefast.core.model.Address
 import com.bitefast.core.model.CartItem
-import com.bitefast.core.model.Order
 import com.bitefast.core.model.PaymentMethod
+import com.bitefast.core.model.Voucher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,6 +38,8 @@ data class CheckoutUiState(
     val isVoucherLoading: Boolean = false,
     val voucherError: String? = null,
     val showVoucherSheet: Boolean = false,
+    val availableVouchers: List<VoucherWalletItem> = emptyList(),
+    val bestVoucherSuggestion: String? = null,
     val showBiometricPrompt: Boolean = false,
     val isOrderPlaced: Boolean = false,
     val placedOrderId: String? = null,
@@ -40,7 +47,7 @@ data class CheckoutUiState(
 ) : UiState {
     val subtotal: Double get() = items.sumOf { it.totalPrice }
     val deliveryFee: Double get() = if (items.isNotEmpty()) 15_000.0 else 0.0
-    val total: Double get() = subtotal + deliveryFee - discount
+    val total: Double get() = (subtotal + deliveryFee - discount).coerceAtLeast(0.0)
     val isAddressValid: Boolean get() = deliveryAddress.streetAddress.isNotBlank()
         && deliveryAddress.phoneNumber.isNotBlank()
 }
@@ -53,9 +60,11 @@ sealed interface CheckoutUiEvent : UiEvent {
     data class VoucherCodeChanged(val code: String) : CheckoutUiEvent
     data class NoteChanged(val note: String) : CheckoutUiEvent
     data object ApplyVoucher : CheckoutUiEvent
+    data class SelectVoucherFromSheet(val voucher: Voucher, val discount: Double) : CheckoutUiEvent
     data object RemoveVoucher : CheckoutUiEvent
     data object OpenVoucherSheet : CheckoutUiEvent
     data object CloseVoucherSheet : CheckoutUiEvent
+    data object AutoApplyBestVoucher : CheckoutUiEvent
     data object PlaceOrder : CheckoutUiEvent
     data object BiometricConfirmed : CheckoutUiEvent
     data object BiometricDismissed : CheckoutUiEvent
@@ -77,6 +86,9 @@ sealed interface CheckoutUiEffect : UiEffect {
 class CheckoutViewModel @Inject constructor(
     private val getCartUseCase: GetCartUseCase,
     private val checkoutOrderUseCase: CheckoutOrderUseCase,
+    private val applyVoucherUseCase: ApplyVoucherUseCase,
+    private val getBestVoucherUseCase: GetBestVoucherUseCase,
+    private val getVoucherWalletUseCase: GetVoucherWalletUseCase,
     private val cartRepository: CartRepository,
     savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<CheckoutUiState, CheckoutUiEvent, CheckoutUiEffect>(
@@ -89,6 +101,31 @@ class CheckoutViewModel @Inject constructor(
         viewModelScope.launch {
             getCartUseCase().collect { items ->
                 updateState { it.copy(items = items) }
+                checkBestVouchers(items)
+            }
+        }
+    }
+
+    private fun checkBestVouchers(items: List<CartItem>) {
+        if (items.isEmpty()) return
+        val subtotal = items.sumOf { it.totalPrice }
+        val restaurantId = items.first().restaurantId
+        viewModelScope.launch {
+            val bestResult = getBestVoucherUseCase(
+                subtotal = subtotal,
+                restaurantId = restaurantId,
+                deliveryFee = 15_000.0
+            )
+            val walletState = getVoucherWalletUseCase(
+                subtotal = subtotal,
+                restaurantId = restaurantId,
+                deliveryFee = 15_000.0
+            )
+            updateState {
+                it.copy(
+                    availableVouchers = walletState.items,
+                    bestVoucherSuggestion = bestResult.message
+                )
             }
         }
     }
@@ -113,11 +150,36 @@ class CheckoutViewModel @Inject constructor(
 
             is CheckoutUiEvent.ApplyVoucher -> applyVoucher()
 
+            is CheckoutUiEvent.SelectVoucherFromSheet -> {
+                updateState {
+                    it.copy(
+                        voucherCode = event.voucher.code,
+                        discount = event.discount,
+                        voucherError = null,
+                        showVoucherSheet = false
+                    )
+                }
+                sendEffect(CheckoutUiEffect.ShowSnackbar("Áp dụng mã ${event.voucher.code} (-%,.0fđ)".format(event.discount)))
+            }
+
+            is CheckoutUiEvent.AutoApplyBestVoucher -> autoApplyBestVoucher()
+
             is CheckoutUiEvent.RemoveVoucher -> {
                 updateState { it.copy(voucherCode = "", discount = 0.0, voucherError = null) }
             }
 
-            is CheckoutUiEvent.OpenVoucherSheet -> updateState { it.copy(showVoucherSheet = true) }
+            is CheckoutUiEvent.OpenVoucherSheet -> {
+                val state = uiState.value
+                val firstItem = state.items.firstOrNull()
+                viewModelScope.launch {
+                    val walletState = getVoucherWalletUseCase(
+                        subtotal = state.subtotal,
+                        restaurantId = firstItem?.restaurantId ?: "",
+                        deliveryFee = state.deliveryFee
+                    )
+                    updateState { it.copy(showVoucherSheet = true, availableVouchers = walletState.items) }
+                }
+            }
             is CheckoutUiEvent.CloseVoucherSheet -> updateState { it.copy(showVoucherSheet = false) }
 
             is CheckoutUiEvent.PlaceOrder -> validateAndPlaceOrder()
@@ -132,33 +194,65 @@ class CheckoutViewModel @Inject constructor(
         }
     }
 
-    private fun applyVoucher() {
-        val code = uiState.value.voucherCode.trim()
-        if (code.isBlank()) {
-            updateState { it.copy(voucherError = "Vui long nhap ma voucher") }
-            return
-        }
-        updateState { it.copy(isVoucherLoading = true, voucherError = null) }
+    private fun autoApplyBestVoucher() {
+        val state = uiState.value
+        val firstItem = state.items.firstOrNull() ?: return
         viewModelScope.launch {
-            // Simulate voucher check — thay bang ValidateVoucherUseCase sau
-            kotlinx.coroutines.delay(600)
-            val discountAmount = when (code.uppercase()) {
-                "BITE10" -> uiState.value.subtotal * 0.10
-                "BITE20" -> uiState.value.subtotal * 0.20
-                "FREESHIP" -> 15_000.0
-                else -> null
-            }
-            if (discountAmount != null) {
+            val bestResult = getBestVoucherUseCase(
+                subtotal = state.subtotal,
+                restaurantId = firstItem.restaurantId,
+                deliveryFee = state.deliveryFee
+            )
+            val bestVoucher = bestResult.bestVoucher
+            if (bestVoucher != null) {
                 updateState {
                     it.copy(
-                        isVoucherLoading = false,
-                        discount = discountAmount,
-                        showVoucherSheet = false,
+                        voucherCode = bestVoucher.code,
+                        discount = bestResult.bestDiscount,
+                        voucherError = null
                     )
                 }
-                sendEffect(CheckoutUiEffect.ShowSnackbar("Ap dung voucher thanh cong! Giam ${"%,.0f".format(discountAmount)}d"))
-            } else {
-                updateState { it.copy(isVoucherLoading = false, voucherError = "Ma voucher khong hop le hoac da het han") }
+                sendEffect(CheckoutUiEffect.ShowSnackbar("Đã áp dụng mã hời nhất ${bestVoucher.code}!"))
+            }
+        }
+    }
+
+    private fun applyVoucher() {
+        val state = uiState.value
+        val code = state.voucherCode.trim()
+        if (code.isBlank()) {
+            updateState { it.copy(voucherError = "Vui lòng nhập mã voucher") }
+            return
+        }
+        val firstItem = state.items.firstOrNull() ?: return
+        updateState { it.copy(isVoucherLoading = true, voucherError = null) }
+        viewModelScope.launch {
+            val result = applyVoucherUseCase(
+                code = code,
+                subtotal = state.subtotal,
+                restaurantId = firstItem.restaurantId,
+                deliveryFee = state.deliveryFee
+            )
+            when (result) {
+                is VoucherValidationResult.Valid -> {
+                    updateState {
+                        it.copy(
+                            isVoucherLoading = false,
+                            voucherCode = result.voucher.code,
+                            discount = result.calculatedDiscount,
+                            showVoucherSheet = false,
+                        )
+                    }
+                    sendEffect(CheckoutUiEffect.ShowSnackbar("Áp dụng mã ${result.voucher.code} thành công! Giảm %,.0fđ".format(result.calculatedDiscount)))
+                }
+                is VoucherValidationResult.Invalid -> {
+                    updateState {
+                        it.copy(
+                            isVoucherLoading = false,
+                            voucherError = result.message
+                        )
+                    }
+                }
             }
         }
     }
@@ -166,12 +260,11 @@ class CheckoutViewModel @Inject constructor(
     private fun validateAndPlaceOrder() {
         val state = uiState.value
         if (!state.isAddressValid) {
-            updateState { it.copy(addressError = "Vui long nhap dia chi giao hang hop le") }
+            updateState { it.copy(addressError = "Vui lòng nhập địa chỉ giao hàng hợp lệ") }
             return
         }
         if (state.items.isEmpty()) return
 
-        // Trigger biometric for CARD / E_WALLET payments
         if (state.selectedPayment in listOf(PaymentMethod.CARD, PaymentMethod.E_WALLET)) {
             updateState { it.copy(showBiometricPrompt = true) }
             sendEffect(CheckoutUiEffect.TriggerBiometric)
@@ -205,10 +298,10 @@ class CheckoutViewModel @Inject constructor(
                     updateState { it.copy(isLoading = false, voucherError = result.message) }
                 }
                 is CheckoutResult.Failure -> {
-                    updateState { it.copy(isLoading = false, errorMessage = result.exception.message ?: "Dat hang that bai.") }
+                    updateState { it.copy(isLoading = false, errorMessage = result.exception.message ?: "Đặt hàng thất bại.") }
                 }
                 CheckoutResult.EmptyCart -> {
-                    updateState { it.copy(isLoading = false, errorMessage = "Gio hang trong.") }
+                    updateState { it.copy(isLoading = false, errorMessage = "Giỏ hàng trống.") }
                 }
             }
         }

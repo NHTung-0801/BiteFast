@@ -1,4 +1,4 @@
-package com.bitefast.feature.profile
+﻿package com.bitefast.feature.profile
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.AlertDialog
@@ -65,12 +66,13 @@ import com.bitefast.core.designsystem.component.BiteFastButton
 import com.bitefast.core.designsystem.theme.OrangePrimaryDark
 import com.bitefast.core.designsystem.theme.OrangePrimary
 
-// ─── Route ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 fun ProfileRoute(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToOrderHistory: () -> Unit = {},
+    onNavigateToVoucherWallet: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,6 +83,7 @@ fun ProfileRoute(
             when (effect) {
                 is ProfileUiEffect.NavigateToLogin -> onNavigateToLogin()
                 is ProfileUiEffect.NavigateToOrderHistory -> onNavigateToOrderHistory()
+                is ProfileUiEffect.NavigateToVoucherWallet -> onNavigateToVoucherWallet()
                 is ProfileUiEffect.NavigateToEditProfile -> {}
                 is ProfileUiEffect.NavigateToAddresses -> {}
                 is ProfileUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
@@ -95,7 +98,7 @@ fun ProfileRoute(
     )
 }
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,12 +129,12 @@ fun ProfileScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState()),
         ) {
-            // ── Avatar + Name header ─────────────────────────────────────────
+            // â”€â”€ Avatar + Name header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ProfileHeader(uiState = uiState, onEvent = onEvent)
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Account Section ──────────────────────────────────────────────
+            // â”€â”€ Account Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (!uiState.isGuest) {
                 MenuSection(title = "Tai khoan") {
                     MenuItem(
@@ -142,6 +145,11 @@ fun ProfileScreen(
                         icon = Icons.Default.LocationOn, label = "So dia chi giao hang",
                         subtitle = if (uiState.addresses.isNotEmpty()) "${uiState.addresses.size} dia chi da luu" else null,
                         onClick = { onEvent(ProfileUiEvent.ClickAddresses) },
+                    )
+                    MenuItem(
+                        icon = Icons.Default.ConfirmationNumber, label = "Kho Voucher & Khuyen mai",
+                        subtitle = "Uu dai giam den 50k",
+                        onClick = { onEvent(ProfileUiEvent.ClickVoucherWallet) },
                     )
                     MenuItem(
                         icon = Icons.Default.Receipt, label = "Lich su don hang",
@@ -156,7 +164,7 @@ fun ProfileScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // ── Settings Section ─────────────────────────────────────────────
+            // â”€â”€ Settings Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             MenuSection(title = "Cai dat") {
                 SwitchMenuItem(
                     icon = Icons.Default.Fingerprint,
@@ -180,7 +188,7 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Support Section ──────────────────────────────────────────────
+            // â”€â”€ Support Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             MenuSection(title = "Ho tro") {
                 MenuItem(icon = Icons.Default.HeadsetMic, label = "Lien he ho tro",
                     onClick = { onEvent(ProfileUiEvent.ClickSupport) })
@@ -190,7 +198,7 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Logout / Login button ────────────────────────────────────────
+            // â”€â”€ Logout / Login button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 if (uiState.isGuest) {
                     BiteFastButton(
@@ -226,7 +234,7 @@ fun ProfileScreen(
     }
 }
 
-// ─── Profile Header ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Profile Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 private fun ProfileHeader(uiState: ProfileUiState, onEvent: (ProfileUiEvent) -> Unit) {
@@ -280,7 +288,7 @@ private fun ProfileHeader(uiState: ProfileUiState, onEvent: (ProfileUiEvent) -> 
     }
 }
 
-// ─── Menu Section ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Menu Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 private fun MenuSection(title: String, content: @Composable () -> Unit) {
@@ -381,7 +389,7 @@ private fun SwitchMenuItem(
     }
 }
 
-// ─── Logout Dialog ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Logout Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 private fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {

@@ -1,14 +1,21 @@
-﻿package com.bitefast.feature.checkout
+package com.bitefast.feature.checkout
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,9 +24,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +44,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -45,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,13 +64,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitefast.core.designsystem.component.BiteFastButton
+import com.bitefast.core.designsystem.component.VoucherCard
 import com.bitefast.core.designsystem.theme.OrangePrimary
 import com.bitefast.core.designsystem.theme.SuccessGreen
+import com.bitefast.core.domain.voucher.VoucherWalletItem
 import com.bitefast.core.model.Address
 import com.bitefast.core.model.CartItem
 import com.bitefast.core.model.PaymentMethod
+import com.bitefast.core.model.Voucher
 
-// ─── Route ────────────────────────────────────────────────────────────────────
+// --- Route --------------------------------------------------------------------
 
 @Composable
 fun CheckoutRoute(
@@ -88,7 +103,7 @@ fun CheckoutRoute(
     )
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// --- Screen -------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,10 +117,14 @@ fun CheckoutScreen(
     if (uiState.showVoucherSheet) {
         VoucherBottomSheet(
             voucherCode = uiState.voucherCode,
+            availableVouchers = uiState.availableVouchers,
             isLoading = uiState.isVoucherLoading,
             error = uiState.voucherError,
             onCodeChanged = { onEvent(CheckoutUiEvent.VoucherCodeChanged(it)) },
             onApply = { onEvent(CheckoutUiEvent.ApplyVoucher) },
+            onSelectVoucher = { voucher, discount ->
+                onEvent(CheckoutUiEvent.SelectVoucherFromSheet(voucher, discount))
+            },
             onDismiss = { onEvent(CheckoutUiEvent.CloseVoucherSheet) },
         )
     }
@@ -114,10 +133,10 @@ fun CheckoutScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Xac nhan don hang", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
+                title = { Text("X�c nh?n don h�ng", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lai")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay l?i")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -140,8 +159,8 @@ fun CheckoutScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // ── Delivery Address section ──────────────────────────────────────
-            SectionCard(title = "Dia chi giao hang", icon = Icons.Default.LocationOn) {
+            // -- Delivery Address section ---------------------------------------
+            SectionCard(title = "�?a ch? giao h�ng", icon = Icons.Default.LocationOn) {
                 AddressForm(
                     address = uiState.deliveryAddress,
                     error = uiState.addressError,
@@ -149,63 +168,130 @@ fun CheckoutScreen(
                 )
             }
 
-            // ── Payment Method section ────────────────────────────────────────
-            SectionCard(title = "Phuong thuc thanh toan", icon = Icons.Default.CreditCard) {
+            // -- Payment Method section -----------------------------------------
+            SectionCard(title = "Phuong th?c thanh to�n", icon = Icons.Default.CreditCard) {
                 PaymentMethodSelector(
                     selected = uiState.selectedPayment,
                     onSelect = { onEvent(CheckoutUiEvent.PaymentMethodSelected(it)) },
                 )
             }
 
-            // ── Voucher section ───────────────────────────────────────────────
-            SectionCard(title = "Ma giam gia", icon = Icons.Default.ConfirmationNumber) {
+            // -- Voucher section -----------------------------------------------
+            SectionCard(title = "M� gi?m gi�", icon = Icons.Default.ConfirmationNumber) {
                 if (uiState.discount > 0) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "Giam: %,.0f d".format(uiState.discount),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = SuccessGreen,
-                        )
-                        TextButton(onClick = { onEvent(CheckoutUiEvent.RemoveVoucher) }) {
-                            Text("Xoa voucher", color = MaterialTheme.colorScheme.error)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Surface(
+                                    color = SuccessGreen.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "M�: ${uiState.voucherCode}",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = SuccessGreen,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "Ti?t ki?m: %,.0fd".format(uiState.discount),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = SuccessGreen,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                            Row {
+                                TextButton(onClick = { onEvent(CheckoutUiEvent.OpenVoucherSheet) }) {
+                                    Text("�?i m�", color = OrangePrimary)
+                                }
+                                TextButton(onClick = { onEvent(CheckoutUiEvent.RemoveVoucher) }) {
+                                    Text("X�a", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
                     }
                 } else {
-                    TextButton(
-                        onClick = { onEvent(CheckoutUiEvent.OpenVoucherSheet) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Default.ConfirmationNumber, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
-                        Text("  Nhap ma voucher", color = OrangePrimary)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Smart auto-suggestion banner if available
+                        if (!uiState.bestVoucherSuggestion.isNullOrBlank()) {
+                            Surface(
+                                color = OrangePrimary.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.LocalOffer,
+                                            contentDescription = null,
+                                            tint = OrangePrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            text = uiState.bestVoucherSuggestion,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = OrangePrimary
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { onEvent(CheckoutUiEvent.AutoApplyBestVoucher) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                        modifier = Modifier.height(32.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("�p d?ng", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                                    }
+                                }
+                            }
+                        }
+
+                        TextButton(
+                            onClick = { onEvent(CheckoutUiEvent.OpenVoucherSheet) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Default.ConfirmationNumber, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
+                            Text("  Ch?n ho?c nh?p m� voucher", color = OrangePrimary)
+                        }
                     }
                 }
             }
 
-            // ── Note section ──────────────────────────────────────────────────
-            SectionCard(title = "Ghi chu", icon = Icons.Default.MonetizationOn) {
+            // -- Note section --------------------------------------------------
+            SectionCard(title = "Ghi ch�", icon = Icons.Default.MonetizationOn) {
                 OutlinedTextField(
                     value = uiState.note,
                     onValueChange = { onEvent(CheckoutUiEvent.NoteChanged(it)) },
-                    placeholder = { Text("Vi du: it cay, khong hanh...") },
+                    placeholder = { Text("V� d?: �t cay, kh�ng h�nh...") },
                     maxLines = 3,
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
 
-            // ── Order Summary ─────────────────────────────────────────────────
-            SectionCard(title = "Tom tat don hang", icon = Icons.Default.LocationOn) {
+            // -- Order Summary -------------------------------------------------
+            SectionCard(title = "T�m t?t don h�ng", icon = Icons.Default.LocationOn) {
                 OrderSummarySection(uiState = uiState)
             }
         }
     }
 }
 
-// ─── Address Form ─────────────────────────────────────────────────────────────
+// --- Address Form -------------------------------------------------------------
 
 @Composable
 private fun AddressForm(
@@ -217,7 +303,7 @@ private fun AddressForm(
         OutlinedTextField(
             value = address.recipientName,
             onValueChange = { onAddressChanged(address.copy(recipientName = it)) },
-            label = { Text("Ho va ten nguoi nhan") },
+            label = { Text("H? v� t�n ngu?i nh?n") },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
             modifier = Modifier.fillMaxWidth(),
@@ -225,29 +311,36 @@ private fun AddressForm(
         OutlinedTextField(
             value = address.phoneNumber,
             onValueChange = { onAddressChanged(address.copy(phoneNumber = it)) },
-            label = { Text("So dien thoai") },
+            label = { Text("S? di?n tho?i") },
             leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true,
-            isError = error != null,
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
             value = address.streetAddress,
             onValueChange = { onAddressChanged(address.copy(streetAddress = it)) },
-            label = { Text("Dia chi cu the (so nha, duong, phuong/xa)") },
-            leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
-            maxLines = 2,
-            isError = error != null,
-            supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+            label = { Text("�?a ch? chi ti?t (s? nh�, t�n du?ng)") },
+            singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
             modifier = Modifier.fillMaxWidth(),
         )
+        OutlinedTextField(
+            value = address.city,
+            onValueChange = { onAddressChanged(address.copy(city = it)) },
+            label = { Text("T?nh / Th�nh ph?") },
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (error != null) {
+            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
 
-// ─── Payment Method Selector ──────────────────────────────────────────────────
+// --- Payment Method Selector --------------------------------------------------
 
 @Composable
 private fun PaymentMethodSelector(
@@ -255,9 +348,9 @@ private fun PaymentMethodSelector(
     onSelect: (PaymentMethod) -> Unit,
 ) {
     val options = listOf(
-        PaymentMethod.CASH to "Tien mat khi nhan hang",
-        PaymentMethod.CARD to "The ngân hang (Yeu cau Biometric)",
-        PaymentMethod.E_WALLET to "Vi dien tu MoMo/ZaloPay (Yeu cau Biometric)",
+        PaymentMethod.CASH to "Ti?n m?t khi nh?n h�ng (COD)",
+        PaymentMethod.CARD to "Th? ng�n h�ng (Y�u c?u Biometric)",
+        PaymentMethod.E_WALLET to "V� di?n t? MoMo/ZaloPay (Y�u c?u Biometric)",
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (method, label) ->
@@ -266,36 +359,33 @@ private fun PaymentMethodSelector(
                 shape = RoundedCornerShape(10.dp),
                 border = if (selected == method)
                     androidx.compose.foundation.BorderStroke(2.dp, OrangePrimary)
-                else
-                    androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                else null,
                 colors = CardDefaults.cardColors(
-                    containerColor = if (selected == method) OrangePrimary.copy(alpha = 0.07f) else MaterialTheme.colorScheme.surface
+                    containerColor = if (selected == method)
+                        OrangePrimary.copy(alpha = 0.08f)
+                    else MaterialTheme.colorScheme.surfaceVariant,
                 ),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
+                    modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(12.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CreditCard,
-                        contentDescription = null,
-                        tint = if (selected == method) OrangePrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (selected == method) OrangePrimary else MaterialTheme.colorScheme.onSurface,
-                    )
+                    val icon = when (method) {
+                        PaymentMethod.CASH -> Icons.Default.MonetizationOn
+                        PaymentMethod.CARD -> Icons.Default.CreditCard
+                        else -> Icons.Default.Phone
+                    }
+                    Icon(icon, contentDescription = null, tint = OrangePrimary)
+                    Spacer(Modifier.width(12.dp))
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
     }
 }
 
-// ─── Order Summary ────────────────────────────────────────────────────────────
+// --- Order Summary ------------------------------------------------------------
 
 @Composable
 private fun OrderSummarySection(uiState: CheckoutUiState) {
@@ -307,21 +397,21 @@ private fun OrderSummarySection(uiState: CheckoutUiState) {
             ) {
                 Text("${item.quantity}x ${item.name}", style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f), maxLines = 1)
-                Text("%,.0f d".format(item.totalPrice), style = MaterialTheme.typography.bodySmall)
+                Text("%,.0fd".format(item.totalPrice), style = MaterialTheme.typography.bodySmall)
             }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-        SummaryRow("Tam tinh", uiState.subtotal)
-        SummaryRow("Phi giao hang", uiState.deliveryFee)
-        if (uiState.discount > 0) SummaryRow("Giam gia", -uiState.discount, highlight = true)
+        SummaryRow("T?m t�nh", uiState.subtotal)
+        SummaryRow("Ph� giao h�ng", uiState.deliveryFee)
+        if (uiState.discount > 0) SummaryRow("Gi?m gi�", -uiState.discount, highlight = true)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Tong cong", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            Text("T?ng c?ng", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
             Text(
-                "%,.0f d".format(uiState.total),
+                "%,.0fd".format(uiState.total),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                 color = OrangePrimary,
             )
@@ -331,17 +421,22 @@ private fun OrderSummarySection(uiState: CheckoutUiState) {
 
 @Composable
 private fun SummaryRow(label: String, amount: Double, highlight: Boolean = false) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
-            "%,.0f d".format(amount),
-            style = MaterialTheme.typography.bodySmall,
+            "${if (amount < 0) "-%,.0f" else "%,.0f"}d".format(kotlin.math.abs(amount)),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = if (highlight) FontWeight.Bold else FontWeight.Normal,
+            ),
             color = if (highlight) SuccessGreen else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
-// ─── Bottom CTA ───────────────────────────────────────────────────────────────
+// --- Checkout Bottom Bar ------------------------------------------------------
 
 @Composable
 private fun CheckoutBottomBar(
@@ -360,40 +455,39 @@ private fun CheckoutBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("Tong thanh toan", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("T?ng thanh to�n", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    "%,.0f d".format(total),
+                    "%,.0fd".format(total),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                     color = OrangePrimary,
                 )
             }
-            if (isLoading) {
-                CircularProgressIndicator(color = OrangePrimary, modifier = Modifier.size(40.dp))
-            } else {
-                BiteFastButton(
-                    text = "Dat hang",
-                    onClick = onPlaceOrder,
-                    enabled = isEnabled,
-                )
-            }
+            BiteFastButton(
+                text = if (isLoading) "�ang x? l�..." else "�?t h�ng",
+                onClick = onPlaceOrder,
+                enabled = isEnabled,
+                modifier = Modifier.width(160.dp),
+            )
         }
     }
 }
 
-// ─── Voucher Bottom Sheet ─────────────────────────────────────────────────────
+// --- Voucher Bottom Sheet -----------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun VoucherBottomSheet(
     voucherCode: String,
+    availableVouchers: List<VoucherWalletItem>,
     isLoading: Boolean,
     error: String?,
     onCodeChanged: (String) -> Unit,
     onApply: () -> Unit,
+    onSelectVoucher: (Voucher, Double) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -404,37 +498,75 @@ private fun VoucherBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Nhap ma voucher", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-            OutlinedTextField(
-                value = voucherCode,
-                onValueChange = onCodeChanged,
-                label = { Text("Ma voucher (VD: BITE10)") },
-                isError = error != null,
-                supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
-                modifier = Modifier.fillMaxWidth(),
-            )
             Text(
-                "Thu: BITE10 (giam 10%), BITE20 (giam 20%), FREESHIP (mien phi giao hang)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "Uu d�i BiteFast",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
-            BiteFastButton(
-                text = if (isLoading) "Dang kiem tra..." else "Ap dung",
-                onClick = onApply,
-                enabled = !isLoading && voucherCode.isNotBlank(),
+
+            // Input Row
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = voucherCode,
+                    onValueChange = { onCodeChanged(it.uppercase()) },
+                    label = { Text("Nh?p m� uu d�i") },
+                    isError = error != null,
+                    supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary),
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = onApply,
+                    enabled = !isLoading && voucherCode.isNotBlank(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    modifier = Modifier.height(54.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Text("�p d?ng", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Text(
+                text = "M� gi?m gi� kh? d?ng:",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
             )
-            Spacer(Modifier.height(8.dp))
+
+            // Scrollable list of vouchers
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 380.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(availableVouchers, key = { it.voucher.id.ifBlank { it.voucher.code } }) { item ->
+                    VoucherCard(
+                        voucher = item.voucher,
+                        isEligible = item.isEligible,
+                        calculatedDiscount = item.calculatedDiscount,
+                        missingAmount = item.missingAmount,
+                        statusMessage = item.statusMessage,
+                        isSelected = item.voucher.code == voucherCode,
+                        onApply = { onSelectVoucher(item.voucher, item.calculatedDiscount) }
+                    )
+                }
+            }
         }
     }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// --- Helpers ------------------------------------------------------------------
 
 @Composable
 private fun SectionCard(

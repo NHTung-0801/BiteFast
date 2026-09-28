@@ -1,4 +1,4 @@
-package com.bitefast.core.data.repository
+﻿package com.bitefast.core.data.repository
 
 import com.bitefast.core.domain.repository.VoucherRepository
 import com.bitefast.core.model.Voucher
@@ -13,7 +13,7 @@ class VoucherRepositoryImpl @Inject constructor() : VoucherRepository {
 
     init {
         val now = System.currentTimeMillis()
-        val future = now + 30L * 24 * 60 * 60 * 1000 // 30 days
+        val future = now + 30L * 24 * 60 * 60 * 1000 // 30 ngày
         listOf(
             Voucher(
                 id = "v_welcome",
@@ -32,10 +32,10 @@ class VoucherRepositoryImpl @Inject constructor() : VoucherRepository {
                 id = "v_freeship",
                 code = "FREESHIP",
                 name = "Miễn phí vận chuyển",
-                description = "Giảm tối đa 25.000đ phí giao hàng",
-                type = "fixed",
+                description = "Giảm tối đa 25.000đ phí giao hàng cho đơn từ 40.000đ",
+                type = "free_shipping",
                 value = 25000.0,
-                minOrderValue = 50000.0,
+                minOrderValue = 40000.0,
                 maxDiscount = 25000.0,
                 startDate = now - 10000,
                 endDate = future,
@@ -45,11 +45,50 @@ class VoucherRepositoryImpl @Inject constructor() : VoucherRepository {
                 id = "v_bitefast20",
                 code = "BITEFAST20",
                 name = "Giảm 20% tổng đơn",
-                description = "Giảm tối đa 40.000đ cho đơn từ 120.000đ",
+                description = "Giảm tối đa 40.000đ cho đơn từ 80.000đ",
                 type = "percentage",
                 value = 20.0,
-                minOrderValue = 120000.0,
+                minOrderValue = 80000.0,
                 maxDiscount = 40000.0,
+                startDate = now - 10000,
+                endDate = future,
+                isActive = true
+            ),
+            Voucher(
+                id = "v_tiec50",
+                code = "TIEC50",
+                name = "Ưu đãi tiệc bạn bè giảm 50k",
+                description = "Giảm ngay 50.000đ cho đơn nhóm từ 200.000đ",
+                type = "fixed",
+                value = 50000.0,
+                minOrderValue = 200000.0,
+                maxDiscount = 50000.0,
+                startDate = now - 10000,
+                endDate = future,
+                isActive = true
+            ),
+            Voucher(
+                id = "v_superdeal",
+                code = "SUPERDEAL",
+                name = "Siêu deal giảm 30%",
+                description = "Giảm tối đa 60.000đ cho đơn từ 150.000đ",
+                type = "percentage",
+                value = 30.0,
+                minOrderValue = 150000.0,
+                maxDiscount = 60000.0,
+                startDate = now - 10000,
+                endDate = future,
+                isActive = true
+            ),
+            Voucher(
+                id = "v_bitefast10",
+                code = "BITE10",
+                name = "Giảm ngay 10k",
+                description = "Áp dụng cho mọi đơn hàng từ 50.000đ",
+                type = "fixed",
+                value = 10000.0,
+                minOrderValue = 50000.0,
+                maxDiscount = 10000.0,
                 startDate = now - 10000,
                 endDate = future,
                 isActive = true

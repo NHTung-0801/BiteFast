@@ -1,4 +1,4 @@
-package com.bitefast.app.navigation
+﻿package com.bitefast.app.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -47,15 +47,17 @@ import com.bitefast.feature.profile.ProfileRoute
 import com.bitefast.feature.rating.RatingRoute
 import com.bitefast.feature.notification.NotificationRoute
 import com.bitefast.feature.tracking.TrackingRoute
+import com.bitefast.feature.voucher.VoucherWalletRoute
 
-// ─── Route constants ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Route constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const val DETAIL_ROUTE = "detail/{restaurantId}"
 const val CHECKOUT_ROUTE = "checkout"
 const val TRACKING_ROUTE = "tracking/{orderId}"
 const val RATING_ROUTE = "rating/{orderId}"
 const val NOTIFICATION_ROUTE = "notification"
+const val VOUCHER_WALLET_ROUTE = "voucher_wallet"
 
-/** Route destinations có bottom bar ẩn đi. */
+/** Route destinations cÃ³ bottom bar áº©n Ä‘i. */
 private val ROUTES_WITHOUT_BOTTOM_BAR = setOf(
     "login", "register",
     "checkout",
@@ -63,15 +65,16 @@ private val ROUTES_WITHOUT_BOTTOM_BAR = setOf(
     "tracking/{orderId}",
     "rating/{orderId}",
     "notification",
+    "voucher_wallet",
 )
 
-// ─── Top-level destinations ───────────────────────────────────────────────────
+// â”€â”€â”€ Top-level destinations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 private val TOP_LEVEL_ROUTES = TopLevelDestination.entries.map { it.route }.toSet()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BiteFastApp(
-    /** Số lượng item trong giỏ — dùng cho badge trên tab Giỏ hàng. */
+    /** Sá»‘ lÆ°á»£ng item trong giá» â€” dÃ¹ng cho badge trÃªn tab Giá» hÃ ng. */
     cartItemCount: Int = 0,
 ) {
     val navController = rememberNavController()
@@ -116,7 +119,7 @@ fun BiteFastApp(
             popExitTransition = { fadeOut(tween(220)) },
         ) {
 
-            // ── Tab 1: Discovery ──────────────────────────────────────────────
+            // â”€â”€ Tab 1: Discovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(TopLevelDestination.DISCOVERY.route) {
                 DiscoveryRoute(
                     onNavigateToDetail = { restaurantId ->
@@ -125,7 +128,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Tab 2: Cart ───────────────────────────────────────────────────
+            // â”€â”€ Tab 2: Cart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(TopLevelDestination.CART.route) {
                 CartRoute(
                     onNavigateToCheckout = {
@@ -134,7 +137,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Tab 3: Orders ─────────────────────────────────────────────────
+            // â”€â”€ Tab 3: Orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(TopLevelDestination.ORDERS.route) {
                 OrderRoute(
                     onNavigateToTracking = { orderId ->
@@ -146,7 +149,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Tab 4: Profile ────────────────────────────────────────────────
+            // â”€â”€ Tab 4: Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(TopLevelDestination.PROFILE.route) {
                 ProfileRoute(
                     onNavigateToLogin = {
@@ -160,7 +163,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Detail ────────────────────────────────────────────────────────
+            // â”€â”€ Detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(
                 route = DETAIL_ROUTE,
                 arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
@@ -177,7 +180,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Checkout ──────────────────────────────────────────────────────
+            // â”€â”€ Checkout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(CHECKOUT_ROUTE) {
                 CheckoutRoute(
                     onNavigateBack = { navController.popBackStack() },
@@ -189,7 +192,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Tracking ──────────────────────────────────────────────────────
+            // â”€â”€ Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(
                 route = TRACKING_ROUTE,
                 arguments = listOf(navArgument("orderId") { type = NavType.StringType })
@@ -210,7 +213,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Rating ────────────────────────────────────────────────────────
+            // â”€â”€ Rating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             composable(
                 route = RATING_ROUTE,
                 arguments = listOf(navArgument("orderId") { type = NavType.StringType })
@@ -231,7 +234,7 @@ fun BiteFastApp(
                 )
             }
 
-            // ── Auth ──────────────────────────────────────────────────────────
+            // â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             loginScreen(
                 onNavigateToHome = {
                     navController.navigate(TopLevelDestination.DISCOVERY.route) {
@@ -253,7 +256,7 @@ fun BiteFastApp(
             )
         }
 
-        // ── Login Gate Bottom Sheet ───────────────────────────────────────────
+        // â”€â”€ Login Gate Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (showLoginGate) {
             LoginGateBottomSheet(
                 onDismiss = { showLoginGate = false },
@@ -271,7 +274,7 @@ fun BiteFastApp(
     }
 }
 
-// ─── Bottom Navigation Bar ────────────────────────────────────────────────────
+// â”€â”€â”€ Bottom Navigation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 private fun BiteFastBottomBar(
@@ -289,7 +292,7 @@ private fun BiteFastBottomBar(
                 selected = isSelected,
                 onClick = { onDestinationSelected(destination) },
                 icon = {
-                    // Badge số lượng giỏ hàng
+                    // Badge sá»‘ lÆ°á»£ng giá» hÃ ng
                     if (destination == TopLevelDestination.CART && cartItemCount > 0) {
                         BadgedBox(
                             badge = {
