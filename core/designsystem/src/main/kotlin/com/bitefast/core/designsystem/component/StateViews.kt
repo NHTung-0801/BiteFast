@@ -1,4 +1,4 @@
-﻿package com.bitefast.core.designsystem.component
+package com.bitefast.core.designsystem.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -21,6 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bitefast.core.designsystem.theme.ErrorRed
@@ -56,7 +60,7 @@ fun ErrorState(
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-            modifier = Modifier.height(48.dp)
+            modifier = Modifier.heightIn(min = 48.dp)
         ) {
             Text(text = "Thử lại")
         }
@@ -111,11 +115,14 @@ fun OfflineBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(bannerColor)
-                .padding(vertical = 8.dp, horizontal = 16.dp),
+                .padding(vertical = 10.dp, horizontal = 16.dp)
+                .semantics {
+                    liveRegion = LiveRegionMode.Polite
+                },
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Không có kết nối Internet — Đang tự động thử lại...",
+                text = "Không có kết nối Internet - Đang tự động thử lại...",
                 color = Color.White,
                 style = MaterialTheme.typography.labelMedium
             )

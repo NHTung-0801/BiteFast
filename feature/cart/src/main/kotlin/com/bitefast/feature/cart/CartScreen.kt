@@ -125,7 +125,9 @@ fun CartScreen(
                     AnimatedVisibility(visible = uiState.items.isNotEmpty()) {
                         IconButton(
                             onClick = { onEvent(CartUiEvent.ClearCart) },
-                            modifier = Modifier.semantics { contentDescription = "Xoa toan bo gio hang" }
+                            modifier = Modifier
+                                .size(48.dp)
+                                .semantics { contentDescription = "Xóa toàn bộ giỏ hàng" }
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         }

@@ -1,5 +1,6 @@
 plugins {
     id("bitefast.jvm.library")
+    id("org.jetbrains.kotlinx.kover")
 }
 
 dependencies {
@@ -15,4 +16,22 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+kover {
+    reports {
+        verify {
+            rule {
+                minBound(85)
+            }
+        }
+        total {
+            html {
+                onCheck = true
+            }
+            xml {
+                onCheck = true
+            }
+        }
+    }
 }

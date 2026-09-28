@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.bitefast.core.designsystem.theme.OrangePrimary
@@ -31,6 +33,7 @@ import com.bitefast.core.model.Restaurant
 
 /**
  * Enterprise accessible Restaurant Card adhering to WCAG 2.1 AA screen reader standards.
+ * Provides unified TalkBack announcement and guaranteed 48dp+ touch target.
  */
 @Composable
 fun RestaurantCard(
@@ -54,6 +57,7 @@ fun RestaurantCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .fillMaxWidth()
+            .sizeIn(minHeight = 48.dp)
             .clearAndSetSemantics {
                 contentDescription = a11yDescription
                 role = Role.Button
@@ -73,7 +77,9 @@ fun RestaurantCard(
                 Text(
                     text = restaurant.name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

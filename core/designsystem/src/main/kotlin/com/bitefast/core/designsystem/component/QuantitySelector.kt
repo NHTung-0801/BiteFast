@@ -37,10 +37,12 @@ fun QuantitySelector(
                 contentDescription = "Số lượng món: $quantity"
                 customActions = listOf(
                     CustomAccessibilityAction("Tăng số lượng") {
-                        onIncrease(); true
+                        onIncrease()
+                        true
                     },
                     CustomAccessibilityAction("Giảm số lượng") {
-                        onDecrease(); true
+                        onDecrease()
+                        true
                     }
                 )
             }

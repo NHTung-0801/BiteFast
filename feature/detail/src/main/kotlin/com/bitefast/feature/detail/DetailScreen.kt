@@ -324,44 +324,59 @@ private fun RestaurantHeroHeader(
         ) {
             IconButton(
                 onClick = onBackClick,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Quay lai",
-                    tint = Color.White
-                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Quay lại",
+                        tint = Color.White
+                    )
+                }
             }
 
             Row {
                 IconButton(
                     onClick = onShareClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Chia se",
-                        tint = Color.White
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Chia sẻ nhà hàng",
+                            tint = Color.White
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 IconButton(
                     onClick = onFavoriteClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Yeu thich",
-                        tint = if (isFavorite) ErrorRed else Color.White
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (isFavorite) "Bỏ yêu thích nhà hàng" else "Yêu thích nhà hàng",
+                            tint = if (isFavorite) ErrorRed else Color.White
+                        )
+                    }
                 }
             }
         }
@@ -553,7 +568,7 @@ private fun MenuItemRow(
                     modifier = Modifier.align(Alignment.TopStart)
                 ) {
                     Text(
-                        text = "Ban chay",
+                        text = "Bán chạy",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
@@ -596,16 +611,21 @@ private fun MenuItemRow(
         // Quick Add Button
         IconButton(
             onClick = onQuickAdd,
-            modifier = Modifier
-                .size(36.dp)
-                .background(OrangePrimary, CircleShape)
+            modifier = Modifier.size(48.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Them mon ${item.name}",
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(OrangePrimary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Thêm món ${item.name} vào giỏ hàng",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }

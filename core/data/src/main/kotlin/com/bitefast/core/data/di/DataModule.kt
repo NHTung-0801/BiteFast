@@ -7,6 +7,7 @@ import com.bitefast.core.data.repository.NotificationRepositoryImpl
 import com.bitefast.core.data.repository.OrderRepositoryImpl
 import com.bitefast.core.data.repository.RatingRepositoryImpl
 import com.bitefast.core.data.repository.RestaurantRepositoryImpl
+import com.bitefast.core.data.repository.VoucherRepositoryImpl
 import com.bitefast.core.domain.repository.AddressRepository
 import com.bitefast.core.domain.repository.AuthRepository
 import com.bitefast.core.domain.repository.CartRepository
@@ -14,6 +15,7 @@ import com.bitefast.core.domain.repository.NotificationRepository
 import com.bitefast.core.domain.repository.OrderRepository
 import com.bitefast.core.domain.repository.RatingRepository
 import com.bitefast.core.domain.repository.RestaurantRepository
+import com.bitefast.core.domain.repository.VoucherRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -51,4 +53,8 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindVoucherRepository(impl: VoucherRepositoryImpl): VoucherRepository
 }

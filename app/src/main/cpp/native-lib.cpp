@@ -1,0 +1,68 @@
+#include <jni.h>
+#include <string>
+#include <vector>
+#include <cstdint>
+
+// XOR Key: "BiteFast"
+static const uint8_t XOR_KEY[] = { 0x42, 0x69, 0x74, 0x65, 0x46, 0x61, 0x73, 0x74 };
+static const size_t KEY_LEN = sizeof(XOR_KEY);
+
+static std::string unmask(const uint8_t* data, size_t len) {
+    std::string result;
+    result.resize(len);
+    for (size_t i = 0; i < len; ++i) {
+        result[i] = static_cast<char>(data[i] ^ XOR_KEY[i % KEY_LEN]);
+    }
+    return result;
+}
+
+// Masked arrays (XOR masked with "BiteFast")
+static const uint8_t MASKED_MAPS_KEY[] = {
+    0x03, 0x20, 0x0E, 0x04, 0x15, 0x18, 0x37, 0x59, 0x20, 0x00, 0x00, 0x00,
+    0x20, 0x00, 0x00, 0x00, 0x6F, 0x04, 0x15, 0x15, 0x35, 0x4C, 0x00, 0x11,
+    0x21, 0x1C, 0x06, 0x00, 0x6B, 0x11, 0x01, 0x1B, 0x26, 0x44, 0x1F, 0x00,
+    0x3F, 0x4C, 0x41, 0x44, 0x70, 0x5F
+};
+
+static const uint8_t MASKED_BACKEND_URL[] = {
+    0x2A, 0x1D, 0x00, 0x15, 0x35, 0x5B, 0x5C, 0x5B, 0x23, 0x19, 0x1D, 0x4B,
+    0x24, 0x08, 0x07, 0x11, 0x24, 0x08, 0x07, 0x11, 0x68, 0x17, 0x1D, 0x5B,
+    0x34, 0x58, 0x5B
+};
+
+static const uint8_t MASKED_PAYMENT_KEY[] = {
+    0x32, 0x02, 0x2B, 0x09, 0x2F, 0x17, 0x16, 0x2B, 0x20, 0x00, 0x00, 0x00,
+    0x20, 0x00, 0x00, 0x00, 0x1D, 0x19, 0x15, 0x1C, 0x19, 0x58, 0x4A, 0x4C,
+    0x7A, 0x5B, 0x46, 0x56, 0x75, 0x55, 0x47, 0x45, 0x73
+};
+
+extern "C" {
+
+JNIEXPORT jstring JNICALL
+Java_com_bitefast_core_common_security_NativeSecurity_getMapsApiKeyNative(
+    JNIEnv* env,
+    jobject /* this */
+) {
+    std::string key = unmask(MASKED_MAPS_KEY, sizeof(MASKED_MAPS_KEY));
+    return env->NewStringUTF(key.c_str());
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_bitefast_core_common_security_NativeSecurity_getBackendBaseUrlNative(
+    JNIEnv* env,
+    jobject /* this */
+) {
+    std::string url = unmask(MASKED_BACKEND_URL, sizeof(MASKED_BACKEND_URL));
+    return env->NewStringUTF(url.c_str());
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_bitefast_core_common_security_NativeSecurity_getPaymentGatewayKeyNative(
+    JNIEnv* env,
+    jobject /* this */
+) {
+    std::string key = unmask(MASKED_PAYMENT_KEY, sizeof(MASKED_PAYMENT_KEY));
+    return env->NewStringUTF(key.c_str());
+}
+
+} // extern "C"
