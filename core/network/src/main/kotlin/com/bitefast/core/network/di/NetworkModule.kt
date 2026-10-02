@@ -2,7 +2,10 @@ package com.bitefast.core.network.di
 
 import com.bitefast.core.network.api.BiteFastApiService
 import com.bitefast.core.network.authenticator.TokenAuthenticator
+import com.bitefast.core.network.config.NetworkConfig
+import com.bitefast.core.network.config.NetworkMode
 import com.bitefast.core.network.interceptor.AuthInterceptor
+import com.bitefast.core.network.mock.MockNetworkInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,6 +30,7 @@ object NetworkModule {
         ignoreUnknownKeys = true
         coerceInputValues = true
         isLenient = true
+        encodeDefaults = true
     }
 
     @Provides
@@ -42,6 +46,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         authInterceptor: AuthInterceptor,
+        mockNetworkInterceptor: MockNetworkInterceptor,
         tokenAuthenticator: TokenAuthenticator,
         certificatePinner: CertificatePinner
     ): OkHttpClient {
@@ -49,15 +54,23 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
-        return OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
+            // Auth interceptor attaches Bearer token if user is logged in
             .addInterceptor(authInterceptor)
+            // Mock network interceptor handles requests if NetworkConfig.mode is MOCK
+            .addInterceptor(mockNetworkInterceptor)
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)
-            .certificatePinner(certificatePinner)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
-            .build()
+
+        // Only enforce Certificate Pinning when strictly in LIVE mode against official domain
+        if (NetworkConfig.mode == NetworkMode.LIVE && NetworkConfig.baseUrl.contains("api.bitefast.com")) {
+            builder.certificatePinner(certificatePinner)
+        }
+
+        return builder.build()
     }
 
     @Provides
@@ -68,11 +81,24 @@ object NetworkModule {
     ): BiteFastApiService {
         val contentType = "application/json".toMediaType()
 
+        val url = if (NetworkConfig.mode == NetworkMode.LIVE) {
+            NetworkConfig.baseUrl
+        } else {
+            "https://api.bitefast.com/"
+        }
+
         return Retrofit.Builder()
-            .baseUrl("https://api.bitefast.com/")
+            .baseUrl(url)
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
             .create(BiteFastApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideOrderTrackingSocketClient(
+        client: com.bitefast.core.network.websocket.BiteFastWebSocketClient
+    ): com.bitefast.core.network.websocket.OrderTrackingSocketClient = client
 }
+
