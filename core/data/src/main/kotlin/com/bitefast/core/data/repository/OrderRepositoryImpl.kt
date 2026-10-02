@@ -1,5 +1,7 @@
-﻿package com.bitefast.core.data.repository
+package com.bitefast.core.data.repository
 
+import com.bitefast.core.data.mapper.asExternalModel
+import com.bitefast.core.data.mapper.asOrderItemDto
 import com.bitefast.core.domain.repository.OrderRepository
 import com.bitefast.core.model.Address
 import com.bitefast.core.model.CartItem
@@ -8,8 +10,12 @@ import com.bitefast.core.model.OrderStatus
 import com.bitefast.core.model.PaymentMethod
 import com.bitefast.core.model.PaymentStatus
 import com.bitefast.core.network.api.BiteFastApiService
+import com.bitefast.core.network.model.CancelOrderRequestDto
+import com.bitefast.core.network.model.CreateOrderRequestDto
+import com.bitefast.core.network.websocket.OrderTrackingSocketClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -31,6 +37,7 @@ private val COMPLETED_STATUSES = setOf(
 @Singleton
 class OrderRepositoryImpl @Inject constructor(
     private val apiService: BiteFastApiService,
+    private val socketClient: OrderTrackingSocketClient? = null
 ) : OrderRepository {
 
     private val initialSampleOrders = listOf(
@@ -179,19 +186,70 @@ class OrderRepositoryImpl @Inject constructor(
     override fun getCompletedOrders(): Flow<List<Order>> =
         ordersFlow.map { orders -> orders.filter { it.status in COMPLETED_STATUSES } }
 
-    override fun getOrderStream(orderId: String): Flow<Order?> =
-        ordersFlow.map { list ->
-            list.find { it.id == orderId } ?: getOrderDetail(orderId)
+    override fun getOrderStream(orderId: String): Flow<Order?> = flow {
+        val initialOrder = ordersFlow.value.find { it.id == orderId } ?: buildFallbackOrder(orderId)
+        emit(initialOrder)
+
+        val socket = socketClient
+        if (socket != null) {
+            socket.observeLiveTracking(orderId).collect { event ->
+                val statusEnum = when (event.status.uppercase()) {
+                    "PREPARING" -> OrderStatus.PREPARING
+                    "READY" -> OrderStatus.READY
+                    "ON_THE_WAY" -> OrderStatus.ON_THE_WAY
+                    "DELIVERED" -> OrderStatus.DELIVERED
+                    "CANCELED" -> OrderStatus.CANCELED
+                    else -> initialOrder.status
+                }
+
+                val updatedOrder = (ordersFlow.value.find { it.id == orderId } ?: initialOrder).copy(
+                    status = statusEnum,
+                    driverId = event.driverId.ifBlank { initialOrder.driverId },
+                    driverName = event.driverName.ifBlank { initialOrder.driverName },
+                    driverPhone = event.driverPhone.ifBlank { initialOrder.driverPhone }
+                )
+
+                ordersFlow.update { current ->
+                    listOf(updatedOrder) + current.filter { it.id != orderId }
+                }
+                emit(updatedOrder)
+            }
+        } else {
+            ordersFlow.collect { list ->
+                emit(list.find { it.id == orderId } ?: initialOrder)
+            }
         }
+    }
 
     override suspend fun createOrder(order: Order): Order {
+        val requestDto = CreateOrderRequestDto(
+            restaurantId = order.restaurantId,
+            restaurantName = order.restaurantName,
+            items = order.items.map { it.asOrderItemDto() },
+            subtotal = order.subtotal,
+            deliveryFee = order.deliveryFee,
+            discount = order.discount,
+            total = order.total,
+            paymentMethod = order.paymentMethod.name,
+            deliveryAddressText = order.address.streetAddress,
+            recipientName = order.address.recipientName,
+            recipientPhone = order.address.phoneNumber
+        )
+
         val created = try {
-            apiService.createOrder(order)
+            val response = apiService.createOrder(requestDto)
+            response.data?.asExternalModel() ?: order.copy(
+                id = if (order.id.isNotBlank()) order.id else "ord_${System.currentTimeMillis()}",
+                status = OrderStatus.CONFIRMED,
+                driverName = "Nguyễn Văn Hùng",
+                driverPhone = "0901234567",
+                estimatedDeliveryTime = System.currentTimeMillis() + 25 * 60 * 1000L
+            )
         } catch (e: Exception) {
             order.copy(
                 id = if (order.id.isNotBlank()) order.id else "ord_${System.currentTimeMillis()}",
                 status = OrderStatus.CONFIRMED,
-                driverName = "Nguyen Van Hung",
+                driverName = "Nguyễn Văn Hùng",
                 driverPhone = "0901234567",
                 estimatedDeliveryTime = System.currentTimeMillis() + 25 * 60 * 1000L
             )
@@ -202,52 +260,65 @@ class OrderRepositoryImpl @Inject constructor(
         return created
     }
 
+    private fun buildFallbackOrder(orderId: String): Order = Order(
+        id = orderId,
+        restaurantId = "res_1",
+        restaurantName = "Cơm Tấm Phúc Lộc Thọ - Lê Văn Việt",
+        driverId = "drv_01",
+        driverName = "Nguyễn Văn Hùng",
+        driverPhone = "0901234567",
+        status = OrderStatus.ON_THE_WAY,
+        items = listOf(
+            CartItem(
+                id = "ci_mock",
+                cartId = "cart_mock",
+                menuItemId = "menu_1_2",
+                restaurantId = "res_1",
+                name = "Cơm Sườn Bì Chả Đặc Biệt",
+                price = 65000.0,
+                quantity = 1,
+                notes = "Kèm canh rong biển",
+                imageUrl = "https://images.unsplash.com/photo-1544025162-d76694265947?w=500"
+            )
+        ),
+        subtotal = 65000.0,
+        deliveryFee = 15000.0,
+        total = 80000.0,
+        paymentMethod = PaymentMethod.CASH,
+        paymentStatus = PaymentStatus.PENDING,
+        address = Address(
+            recipientName = "Nguyễn Văn A",
+            phoneNumber = "0909123456",
+            streetAddress = "456 Lê Văn Việt, Tăng Nhơn Phú A, TP. Thủ Đức"
+        ),
+        orderTime = System.currentTimeMillis() - 10 * 60 * 1000L,
+        estimatedDeliveryTime = System.currentTimeMillis() + 15 * 60 * 1000L
+    )
+
     override suspend fun getOrderDetail(orderId: String): Order? {
         val existing = ordersFlow.value.find { it.id == orderId }
         if (existing != null) return existing
-
-        // Tao don hang mac dinh dang hoat dong neu chua co de man hinh tracking hien thi
-        val mockOrder = Order(
-            id = orderId,
-            restaurantId = "res_1",
-            restaurantName = "Com Tam Phuc Loc Tho - Le Van Viet",
-            driverId = "drv_01",
-            driverName = "Nguyen Van Hung",
-            driverPhone = "0901234567",
-            status = OrderStatus.ON_THE_WAY,
-            items = listOf(
-                CartItem(
-                    id = "ci_mock",
-                    cartId = "cart_mock",
-                    menuItemId = "menu_1_2",
-                    restaurantId = "res_1",
-                    name = "Com Suon Bi Cha Dac Biet",
-                    price = 65000.0,
-                    quantity = 1,
-                    notes = "Kem canh rong bien",
-                    imageUrl = "https://images.unsplash.com/photo-1544025162-d76694265947?w=500"
-                )
-            ),
-            subtotal = 65000.0,
-            deliveryFee = 15000.0,
-            total = 80000.0,
-            paymentMethod = PaymentMethod.CASH,
-            paymentStatus = PaymentStatus.PENDING,
-            address = Address(
-                recipientName = "Nguyen Van A",
-                phoneNumber = "0909123456",
-                streetAddress = "456 Le Van Viet, Tang Nhon Phu A, TP. Thu Duc"
-            ),
-            orderTime = System.currentTimeMillis() - 10 * 60 * 1000L,
-            estimatedDeliveryTime = System.currentTimeMillis() + 15 * 60 * 1000L
-        )
-        ordersFlow.update { current -> listOf(mockOrder) + current }
-        return mockOrder
+        return try {
+            val response = apiService.getOrderDetail(orderId)
+            val remoteOrder = response.data?.asExternalModel()
+            if (remoteOrder != null) {
+                ordersFlow.update { current -> listOf(remoteOrder) + current.filter { it.id != orderId } }
+                remoteOrder
+            } else {
+                val mockOrder = buildFallbackOrder(orderId)
+                ordersFlow.update { current -> listOf(mockOrder) + current }
+                mockOrder
+            }
+        } catch (e: Exception) {
+            val mockOrder = buildFallbackOrder(orderId)
+            ordersFlow.update { current -> listOf(mockOrder) + current }
+            mockOrder
+        }
     }
 
     override suspend fun cancelOrder(orderId: String, reason: String) {
         try {
-            // apiService.cancelOrder(orderId, reason)
+            apiService.cancelOrder(orderId, CancelOrderRequestDto(reason))
         } catch (_: Exception) {}
 
         ordersFlow.update { list ->

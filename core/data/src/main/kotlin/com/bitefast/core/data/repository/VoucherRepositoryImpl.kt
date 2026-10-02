@@ -1,13 +1,17 @@
-﻿package com.bitefast.core.data.repository
+package com.bitefast.core.data.repository
 
+import com.bitefast.core.data.mapper.asExternalModel
 import com.bitefast.core.domain.repository.VoucherRepository
 import com.bitefast.core.model.Voucher
+import com.bitefast.core.network.api.BiteFastApiService
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class VoucherRepositoryImpl @Inject constructor() : VoucherRepository {
+class VoucherRepositoryImpl @Inject constructor(
+    private val apiService: BiteFastApiService
+) : VoucherRepository {
 
     private val vouchers = ConcurrentHashMap<String, Voucher>()
 
@@ -97,12 +101,38 @@ class VoucherRepositoryImpl @Inject constructor() : VoucherRepository {
     }
 
     override suspend fun getVouchers(restaurantId: String?): List<Voucher> {
+        try {
+            val response = apiService.getVouchers()
+            val remoteVouchers = response.data
+            if (!remoteVouchers.isNullOrEmpty()) {
+                remoteVouchers.forEach {
+                    val model = it.asExternalModel()
+                    vouchers[model.code.uppercase()] = model
+                }
+            }
+        } catch (_: Exception) {}
+
         return vouchers.values.filter { voucher ->
             voucher.isActive && (restaurantId == null || voucher.applicableRestaurants.isEmpty() || voucher.applicableRestaurants.contains(restaurantId))
         }
     }
 
     override suspend fun getVoucherByCode(code: String): Voucher? {
-        return vouchers[code.trim().uppercase()]
+        val uppercaseCode = code.trim().uppercase()
+        val cached = vouchers[uppercaseCode]
+        if (cached != null) return cached
+
+        try {
+            val response = apiService.getVouchers()
+            val remoteVouchers = response.data
+            if (!remoteVouchers.isNullOrEmpty()) {
+                remoteVouchers.forEach {
+                    val model = it.asExternalModel()
+                    vouchers[model.code.uppercase()] = model
+                }
+            }
+        } catch (_: Exception) {}
+
+        return vouchers[uppercaseCode]
     }
 }

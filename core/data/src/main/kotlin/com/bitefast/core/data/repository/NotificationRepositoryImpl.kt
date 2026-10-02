@@ -1,15 +1,20 @@
 package com.bitefast.core.data.repository
 
+import com.bitefast.core.data.mapper.asEntity
+import com.bitefast.core.data.mapper.asExternalModel
+import com.bitefast.core.database.dao.NotificationDao
 import com.bitefast.core.domain.repository.NotificationRepository
 import com.bitefast.core.model.Notification
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NotificationRepositoryImpl @Inject constructor() : NotificationRepository {
+class NotificationRepositoryImpl @Inject constructor(
+    private val notificationDao: NotificationDao
+) : NotificationRepository {
 
     private val initialNotifications = listOf(
         Notification(
@@ -53,29 +58,37 @@ class NotificationRepositoryImpl @Inject constructor() : NotificationRepository 
         )
     )
 
-    private val notificationsFlow = MutableStateFlow(initialNotifications)
+    private var hasSeeded = false
 
-    override fun getNotifications(): Flow<List<Notification>> = notificationsFlow
+    override fun getNotifications(): Flow<List<Notification>> =
+        notificationDao.getNotifications()
+            .onStart {
+                if (!hasSeeded) {
+                    hasSeeded = true
+                    notificationDao.insertNotifications(initialNotifications.map { it.asEntity() })
+                }
+            }
+            .map { list ->
+                list.map { it.asExternalModel() }
+            }
+
+    override suspend fun addNotification(notification: Notification) {
+        notificationDao.insertNotification(notification.asEntity())
+    }
 
     override suspend fun markAsRead(id: String) {
-        notificationsFlow.update { list ->
-            list.map { if (it.id == id) it.copy(isRead = true) else it }
-        }
+        notificationDao.markAsRead(id)
     }
 
     override suspend fun markAllAsRead() {
-        notificationsFlow.update { list ->
-            list.map { it.copy(isRead = true) }
-        }
+        notificationDao.markAllAsRead()
     }
 
     override suspend fun deleteNotification(id: String) {
-        notificationsFlow.update { list ->
-            list.filter { it.id != id }
-        }
+        notificationDao.deleteNotification(id)
     }
 
     override suspend fun clearAllNotifications() {
-        notificationsFlow.update { emptyList() }
+        notificationDao.clearAll()
     }
 }

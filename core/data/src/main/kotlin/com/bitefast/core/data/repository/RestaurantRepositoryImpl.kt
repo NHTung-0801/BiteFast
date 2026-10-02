@@ -1,5 +1,6 @@
-﻿package com.bitefast.core.data.repository
+package com.bitefast.core.data.repository
 
+import com.bitefast.core.data.mapper.asEntity
 import com.bitefast.core.data.mapper.asExternalModel
 import com.bitefast.core.database.dao.RestaurantDao
 import com.bitefast.core.domain.repository.RestaurantRepository
@@ -8,6 +9,7 @@ import com.bitefast.core.model.Restaurant
 import com.bitefast.core.network.api.BiteFastApiService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import com.bitefast.core.common.extension.unaccent
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -296,12 +298,51 @@ class RestaurantRepositoryImpl @Inject constructor(
             val list = if (localList.isNotEmpty()) {
                 localList.map { it.asExternalModel() }
             } else {
-                sampleRestaurants
+                // Background sync from remote API
+                try {
+                    val remote = kotlinx.coroutines.runBlocking { apiService.getRestaurants(query, cuisine) }
+                    val remoteData = remote.data
+                    if (!remoteData.isNullOrEmpty()) {
+                        val entities = remoteData.map { it.asEntity() }
+                        restaurantDao.insertRestaurants(entities)
+                        remoteData.map { it.asExternalModel() }
+                    } else {
+                        sampleRestaurants
+                    }
+                } catch (e: Exception) {
+                    sampleRestaurants
+                }
             }
 
             list.filter { item ->
-                val matchesQuery = query.isNullOrBlank() || item.name.contains(query, ignoreCase = true)
-                val matchesCuisine = cuisine.isNullOrBlank() || item.cuisine.equals(cuisine, ignoreCase = true)
+                val matchesQuery = if (query.isNullOrBlank()) {
+                    true
+                } else {
+                    val cleanQuery = query.unaccent()
+                    item.name.unaccent().contains(cleanQuery) ||
+                        item.description.unaccent().contains(cleanQuery) ||
+                        item.cuisine.unaccent().contains(cleanQuery) ||
+                        item.tags.any { it.unaccent().contains(cleanQuery) }
+                }
+
+                val matchesCuisine = if (cuisine.isNullOrBlank()) {
+                    true
+                } else {
+                    val cleanFilter = cuisine.unaccent()
+                    val cleanItemCuisine = item.cuisine.unaccent()
+                    val cleanItemName = item.name.unaccent()
+                    val cleanTags = item.tags.map { it.unaccent() }
+
+                    cleanItemCuisine == cleanFilter ||
+                        cleanItemCuisine.contains(cleanFilter) ||
+                        cleanFilter.contains(cleanItemCuisine) ||
+                        cleanFilter.split("&", ",", " ").map { it.trim() }.filter { it.length >= 2 }.any { token ->
+                            cleanItemCuisine.contains(token) || cleanItemName.contains(token) || cleanTags.any { it.contains(token) }
+                        } ||
+                        cleanTags.any { it.contains(cleanFilter) || cleanFilter.contains(it) } ||
+                        cleanItemName.contains(cleanFilter)
+                }
+
                 matchesQuery && matchesCuisine
             }
         }
@@ -310,17 +351,20 @@ class RestaurantRepositoryImpl @Inject constructor(
     override suspend fun getRestaurantDetail(id: String): Restaurant {
         val local = restaurantDao.getRestaurantById(id)
         if (local != null) return local.asExternalModel()
-        return sampleRestaurants.find { it.id == id } ?: try {
-            apiService.getRestaurantDetail(id)
+        return try {
+            val response = apiService.getRestaurantDetail(id)
+            val detail = response.data
+            detail?.restaurant?.asExternalModel() ?: sampleRestaurants.find { it.id == id } ?: sampleRestaurants.first()
         } catch (e: Exception) {
-            sampleRestaurants.firstOrNull()?.copy(id = id, name = "Nha Hang Doi Tac BiteFast")
-                ?: Restaurant(id = id, name = "Nha Hang Doi Tac BiteFast")
+            sampleRestaurants.find { it.id == id } ?: sampleRestaurants.firstOrNull()?.copy(id = id, name = "Nhà Hàng Đối Tác BiteFast")
+                ?: Restaurant(id = id, name = "Nhà Hàng Đối Tác BiteFast")
         }
     }
 
     override suspend fun getRestaurantMenu(restaurantId: String): List<MenuItem> {
         val remoteMenu = try {
-            apiService.getRestaurantMenu(restaurantId)
+            val response = apiService.getRestaurantMenu(restaurantId)
+            response.data?.map { it.asExternalModel() } ?: emptyList()
         } catch (e: Exception) {
             emptyList()
         }
@@ -331,3 +375,4 @@ class RestaurantRepositoryImpl @Inject constructor(
         }
     }
 }
+
