@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -30,6 +32,8 @@ fun QuantitySelector(
     onDecrease: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -37,10 +41,12 @@ fun QuantitySelector(
                 contentDescription = "Số lượng món: $quantity"
                 customActions = listOf(
                     CustomAccessibilityAction("Tăng số lượng") {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onIncrease()
                         true
                     },
                     CustomAccessibilityAction("Giảm số lượng") {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onDecrease()
                         true
                     }
@@ -48,7 +54,10 @@ fun QuantitySelector(
             }
     ) {
         IconButton(
-            onClick = onDecrease,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onDecrease()
+            },
             modifier = Modifier.size(48.dp)
         ) {
             Icon(Icons.Default.Remove, contentDescription = "Giảm số lượng")
@@ -59,7 +68,10 @@ fun QuantitySelector(
             modifier = Modifier.padding(horizontal = 8.dp)
         )
         IconButton(
-            onClick = onIncrease,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onIncrease()
+            },
             modifier = Modifier.size(48.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = "Tăng số lượng")

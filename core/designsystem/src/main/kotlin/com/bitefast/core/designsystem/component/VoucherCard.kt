@@ -1,4 +1,4 @@
-﻿package com.bitefast.core.designsystem.component
+package com.bitefast.core.designsystem.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -45,6 +46,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +72,7 @@ fun VoucherCard(
     onCopyCode: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val alpha = if (isEligible) 1f else 0.72f
 
     // Theme color based on voucher type
@@ -132,19 +136,39 @@ fun VoucherCard(
                 }
             }
 
-            // Dotted vertical line divider
-            Canvas(
+            // Ticket Notches & Dotted vertical line divider
+            Box(
                 modifier = Modifier
-                    .width(1.dp)
-                    .fillMaxHeight()
+                    .width(16.dp)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
             ) {
-                drawLine(
-                    color = Color.LightGray.copy(alpha = 0.6f),
-                    start = Offset(0f, 0f),
-                    end = Offset(0f, size.height),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
-                    strokeWidth = 2f
-                )
+                val cutoutColor = MaterialTheme.colorScheme.background
+                val dividerColor = MaterialTheme.colorScheme.outlineVariant
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val radius = 8.dp.toPx()
+                    val centerX = size.width / 2f
+                    // Top Ticket Cutout Notch
+                    drawCircle(
+                        color = cutoutColor,
+                        radius = radius,
+                        center = Offset(centerX, 0f)
+                    )
+                    // Bottom Ticket Cutout Notch
+                    drawCircle(
+                        color = cutoutColor,
+                        radius = radius,
+                        center = Offset(centerX, size.height)
+                    )
+                    // Dotted line connecting notches
+                    drawLine(
+                        color = dividerColor,
+                        start = Offset(centerX, radius + 2.dp.toPx()),
+                        end = Offset(centerX, size.height - radius - 2.dp.toPx()),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f),
+                        strokeWidth = 1.5.dp.toPx()
+                    )
+                }
             }
 
             // Right Content Area
@@ -175,7 +199,10 @@ fun VoucherCard(
                     }
 
                     IconButton(
-                        onClick = { onCopyCode(voucher.code) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onCopyCode(voucher.code)
+                        },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
@@ -268,7 +295,10 @@ fun VoucherCard(
                     if (isEligible) {
                         if (isSelected) {
                             OutlinedButton(
-                                onClick = onApply,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onApply()
+                                },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = OrangePrimary
@@ -285,7 +315,10 @@ fun VoucherCard(
                             }
                         } else {
                             ElevatedButton(
-                                onClick = onApply,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onApply()
+                                },
                                 shape = RoundedCornerShape(20.dp),
                                 colors = ButtonDefaults.elevatedButtonColors(
                                     containerColor = OrangePrimary,
