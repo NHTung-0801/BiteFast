@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.profile
+package com.bitefast.feature.profile
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -12,6 +12,8 @@ import com.bitefast.core.domain.user.GetAddressesUseCase
 import com.bitefast.core.model.Address
 import com.bitefast.core.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.bitefast.core.domain.favorite.GetFavoritesUseCase
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,9 +24,9 @@ data class ProfileUiState(
     val user: User = User(),
     val addresses: List<Address> = emptyList(),
     val showLogoutDialog: Boolean = false,
-    val isBiometricEnabled: Boolean = false,
-    val isDarkMode: Boolean = false,
+    val showAboutDialog: Boolean = false,
     val isNotificationEnabled: Boolean = true,
+    val favoriteCount: Int = 0,
     val errorMessage: String? = null,
 ) : UiState {
     val isGuest: Boolean get() = user.isGuest
@@ -38,18 +40,18 @@ data class ProfileUiState(
 // ─── UiEvent ──────────────────────────────────────────────────────────────────
 
 sealed interface ProfileUiEvent : UiEvent {
+    data object ClickLogin : ProfileUiEvent
     data object ClickEditProfile : ProfileUiEvent
     data object ClickAddresses : ProfileUiEvent
     data object ClickVoucherWallet : ProfileUiEvent
     data object ClickOrderHistory : ProfileUiEvent
     data object ClickFavorites : ProfileUiEvent
-    data object ClickSupport : ProfileUiEvent
     data object ClickAbout : ProfileUiEvent
+    data object DismissAboutDialog : ProfileUiEvent
     data object RequestLogout : ProfileUiEvent
     data object ConfirmLogout : ProfileUiEvent
     data object DismissLogoutDialog : ProfileUiEvent
-    data class ToggleBiometric(val enabled: Boolean) : ProfileUiEvent
-    data class ToggleDarkMode(val enabled: Boolean) : ProfileUiEvent
+    data object ReloadUser : ProfileUiEvent
     data class ToggleNotification(val enabled: Boolean) : ProfileUiEvent
     data object DismissError : ProfileUiEvent
 }
@@ -62,6 +64,7 @@ sealed interface ProfileUiEffect : UiEffect {
     data object NavigateToAddresses : ProfileUiEffect
     data object NavigateToVoucherWallet : ProfileUiEffect
     data object NavigateToOrderHistory : ProfileUiEffect
+    data object NavigateToFavorites : ProfileUiEffect
     data class ShowSnackbar(val message: String) : ProfileUiEffect
 }
 
@@ -72,6 +75,7 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val logoutUseCase: LogoutUseCase,
     private val getAddressesUseCase: GetAddressesUseCase,
+    private val getFavoritesUseCase: GetFavoritesUseCase,
     savedStateHandle: SavedStateHandle,
 ) : BaseViewModel<ProfileUiState, ProfileUiEvent, ProfileUiEffect>(
     initialState = ProfileUiState(),
@@ -80,6 +84,15 @@ class ProfileViewModel @Inject constructor(
     init {
         loadUser()
         loadAddresses()
+        observeFavorites()
+    }
+
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            getFavoritesUseCase.getCount()
+                .catch { emit(0) }
+                .collect { count -> updateState { it.copy(favoriteCount = count) } }
+        }
     }
 
     private fun loadUser() {
@@ -90,7 +103,6 @@ class ProfileViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             user = user ?: User(),
-                            isBiometricEnabled = user?.preferences?.biometricAuth ?: false,
                             isNotificationEnabled = user?.preferences?.notifications ?: true,
                         )
                     }
@@ -107,13 +119,15 @@ class ProfileViewModel @Inject constructor(
 
     override fun onEvent(event: ProfileUiEvent) {
         when (event) {
+            is ProfileUiEvent.ClickLogin -> sendEffect(ProfileUiEffect.NavigateToLogin)
             is ProfileUiEvent.ClickEditProfile -> sendEffect(ProfileUiEffect.NavigateToEditProfile)
+            is ProfileUiEvent.ReloadUser -> loadUser()
             is ProfileUiEvent.ClickAddresses -> sendEffect(ProfileUiEffect.NavigateToAddresses)
             is ProfileUiEvent.ClickVoucherWallet -> sendEffect(ProfileUiEffect.NavigateToVoucherWallet)
             is ProfileUiEvent.ClickOrderHistory -> sendEffect(ProfileUiEffect.NavigateToOrderHistory)
-            is ProfileUiEvent.ClickFavorites -> sendEffect(ProfileUiEffect.ShowSnackbar("Chức năng Yêu thích đang phát triển"))
-            is ProfileUiEvent.ClickSupport -> sendEffect(ProfileUiEffect.ShowSnackbar("Liên hệ hotline: 1900-2048"))
-            is ProfileUiEvent.ClickAbout -> sendEffect(ProfileUiEffect.ShowSnackbar("BiteFast v1.0.0 - Đặt đồ ăn nhanh hơn"))
+            is ProfileUiEvent.ClickFavorites -> sendEffect(ProfileUiEffect.NavigateToFavorites)
+            is ProfileUiEvent.ClickAbout -> updateState { it.copy(showAboutDialog = true) }
+            is ProfileUiEvent.DismissAboutDialog -> updateState { it.copy(showAboutDialog = false) }
 
             is ProfileUiEvent.RequestLogout -> updateState { it.copy(showLogoutDialog = true) }
             is ProfileUiEvent.DismissLogoutDialog -> updateState { it.copy(showLogoutDialog = false) }
@@ -127,15 +141,6 @@ class ProfileViewModel @Inject constructor(
                 }
             }
 
-            is ProfileUiEvent.ToggleBiometric -> {
-                updateState { it.copy(isBiometricEnabled = event.enabled) }
-                sendEffect(ProfileUiEffect.ShowSnackbar(if (event.enabled) "Đã bật xác thực Biometric" else "Đã tắt xác thực Biometric"))
-            }
-
-            is ProfileUiEvent.ToggleDarkMode -> {
-                updateState { it.copy(isDarkMode = event.enabled) }
-            }
-
             is ProfileUiEvent.ToggleNotification -> {
                 updateState { it.copy(isNotificationEnabled = event.enabled) }
                 sendEffect(ProfileUiEffect.ShowSnackbar(if (event.enabled) "Đã bật thông báo" else "Đã tắt thông báo"))
@@ -145,3 +150,4 @@ class ProfileViewModel @Inject constructor(
         }
     }
 }
+

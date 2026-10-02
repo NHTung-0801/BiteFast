@@ -1,6 +1,8 @@
-﻿package com.bitefast.feature.profile
+package com.bitefast.feature.profile
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,13 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.HeadsetMic
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Person
@@ -63,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitefast.core.designsystem.component.BiteFastButton
+import com.bitefast.core.designsystem.component.shimmerBrush
 import com.bitefast.core.designsystem.theme.OrangePrimaryDark
 import com.bitefast.core.designsystem.theme.OrangePrimary
 
@@ -70,13 +70,26 @@ import com.bitefast.core.designsystem.theme.OrangePrimary
 
 @Composable
 fun ProfileRoute(
+    profileUpdatedSignal: Boolean = false,
+    onProfileReloadConsumed: () -> Unit = {},
     onNavigateToLogin: () -> Unit = {},
     onNavigateToOrderHistory: () -> Unit = {},
     onNavigateToVoucherWallet: () -> Unit = {},
+    onNavigateToAddresses: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Khi quay về từ EditProfile, tự động reload user profile mới nhất từ DataStore
+    LaunchedEffect(profileUpdatedSignal) {
+        if (profileUpdatedSignal) {
+            viewModel.onEvent(ProfileUiEvent.ReloadUser)
+            onProfileReloadConsumed()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -84,8 +97,9 @@ fun ProfileRoute(
                 is ProfileUiEffect.NavigateToLogin -> onNavigateToLogin()
                 is ProfileUiEffect.NavigateToOrderHistory -> onNavigateToOrderHistory()
                 is ProfileUiEffect.NavigateToVoucherWallet -> onNavigateToVoucherWallet()
-                is ProfileUiEffect.NavigateToEditProfile -> {}
-                is ProfileUiEffect.NavigateToAddresses -> {}
+                is ProfileUiEffect.NavigateToEditProfile -> onNavigateToEditProfile()
+                is ProfileUiEffect.NavigateToAddresses -> onNavigateToAddresses()
+                is ProfileUiEffect.NavigateToFavorites -> onNavigateToFavorites()
                 is ProfileUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
             }
         }
@@ -98,65 +112,67 @@ fun ProfileRoute(
     )
 }
 
-// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     uiState: ProfileUiState,
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    snackbarHostState: SnackbarHostState,
     onEvent: (ProfileUiEvent) -> Unit,
 ) {
-    if (uiState.showLogoutDialog) {
-        LogoutConfirmDialog(
-            onConfirm = { onEvent(ProfileUiEvent.ConfirmLogout) },
-            onDismiss = { onEvent(ProfileUiEvent.DismissLogoutDialog) },
-        )
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Tai khoan", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
+                title = { Text("Tài khoản", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            // â”€â”€ Avatar + Name header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Crossfade(
+            targetState = uiState.isLoading,
+            animationSpec = tween(300),
+            label = "ProfileCrossfade"
+        ) { loading ->
+            if (loading) {
+                ProfileScreenSkeleton(modifier = Modifier.padding(paddingValues))
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+            // ── Avatar + Name header ──────────────────────────────────────────
             ProfileHeader(uiState = uiState, onEvent = onEvent)
 
             Spacer(Modifier.height(16.dp))
 
-            // â”€â”€ Account Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Account Section ───────────────────────────────────────────────
             if (!uiState.isGuest) {
-                MenuSection(title = "Tai khoan") {
+                MenuSection(title = "Tài khoản") {
                     MenuItem(
-                        icon = Icons.Default.Person, label = "Chinh sua ho so",
+                        icon = Icons.Default.Person, label = "Chỉnh sửa hồ sơ",
                         onClick = { onEvent(ProfileUiEvent.ClickEditProfile) },
                     )
                     MenuItem(
-                        icon = Icons.Default.LocationOn, label = "So dia chi giao hang",
-                        subtitle = if (uiState.addresses.isNotEmpty()) "${uiState.addresses.size} dia chi da luu" else null,
+                        icon = Icons.Default.LocationOn, label = "Sổ địa chỉ giao hàng",
+                        subtitle = if (uiState.addresses.isNotEmpty()) "${uiState.addresses.size} địa chỉ đã lưu" else null,
                         onClick = { onEvent(ProfileUiEvent.ClickAddresses) },
                     )
                     MenuItem(
-                        icon = Icons.Default.ConfirmationNumber, label = "Kho Voucher & Khuyen mai",
-                        subtitle = "Uu dai giam den 50k",
+                        icon = Icons.Default.ConfirmationNumber, label = "Kho Voucher & Khuyến mãi",
+                        subtitle = "Ưu đãi giảm đến 50k",
                         onClick = { onEvent(ProfileUiEvent.ClickVoucherWallet) },
                     )
                     MenuItem(
-                        icon = Icons.Default.Receipt, label = "Lich su don hang",
+                        icon = Icons.Default.Receipt, label = "Lịch sử đơn hàng",
                         onClick = { onEvent(ProfileUiEvent.ClickOrderHistory) },
                     )
                     MenuItem(
-                        icon = Icons.Default.FavoriteBorder, label = "Nha hang yeu thich",
+                        icon = Icons.Default.FavoriteBorder, label = "Món ăn & Quán yêu thích",
+                        subtitle = if (uiState.favoriteCount > 0) "${uiState.favoriteCount} mục đã lưu" else null,
                         onClick = { onEvent(ProfileUiEvent.ClickFavorites) },
                     )
                 }
@@ -164,46 +180,32 @@ fun ProfileScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // â”€â”€ Settings Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            MenuSection(title = "Cai dat") {
-                SwitchMenuItem(
-                    icon = Icons.Default.Fingerprint,
-                    label = "Xac thuc Biometric",
-                    checked = uiState.isBiometricEnabled,
-                    onCheckedChange = { onEvent(ProfileUiEvent.ToggleBiometric(it)) },
-                )
+            // ── Settings Section ──────────────────────────────────────────────
+            MenuSection(title = "Cài đặt") {
                 SwitchMenuItem(
                     icon = Icons.Default.Notifications,
-                    label = "Thong bao",
+                    label = "Thông báo",
                     checked = uiState.isNotificationEnabled,
                     onCheckedChange = { onEvent(ProfileUiEvent.ToggleNotification(it)) },
-                )
-                SwitchMenuItem(
-                    icon = Icons.Default.DarkMode,
-                    label = "Giao dien toi",
-                    checked = uiState.isDarkMode,
-                    onCheckedChange = { onEvent(ProfileUiEvent.ToggleDarkMode(it)) },
                 )
             }
 
             Spacer(Modifier.height(12.dp))
 
-            // â”€â”€ Support Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            MenuSection(title = "Ho tro") {
-                MenuItem(icon = Icons.Default.HeadsetMic, label = "Lien he ho tro",
-                    onClick = { onEvent(ProfileUiEvent.ClickSupport) })
-                MenuItem(icon = Icons.Default.Info, label = "Ve BiteFast",
+            // ── Support Section ───────────────────────────────────────────────
+            MenuSection(title = "Hỗ trợ") {
+                MenuItem(icon = Icons.Default.Info, label = "Về BiteFast",
                     onClick = { onEvent(ProfileUiEvent.ClickAbout) })
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // â”€â”€ Logout / Login button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Logout / Login button ─────────────────────────────────────────
             Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 if (uiState.isGuest) {
                     BiteFastButton(
-                        text = "Dang nhap / Dang ky",
-                        onClick = { onEvent(ProfileUiEvent.RequestLogout) },
+                        text = "Đăng nhập / Đăng ký",
+                        onClick = { onEvent(ProfileUiEvent.ClickLogin) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
@@ -211,10 +213,10 @@ fun ProfileScreen(
                         onClick = { onEvent(ProfileUiEvent.RequestLogout) },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(Icons.Default.Logout, contentDescription = null,
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null,
                             tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Dang xuat", color = MaterialTheme.colorScheme.error,
+                        Text("Đăng xuất", color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                     }
                 }
@@ -230,7 +232,22 @@ fun ProfileScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             Spacer(Modifier.height(16.dp))
-        }
+                } // end Column
+            } // end else
+        } // end Crossfade
+    } // end Scaffold
+
+    // ── About Dialog ──────────────────────────────────────────────────────────
+    if (uiState.showAboutDialog) {
+        AboutAppDialog(onDismiss = { onEvent(ProfileUiEvent.DismissAboutDialog) })
+    }
+
+    // ── Logout Confirm Dialog ─────────────────────────────────────────────────
+    if (uiState.showLogoutDialog) {
+        LogoutConfirmDialog(
+            onConfirm = { onEvent(ProfileUiEvent.ConfirmLogout) },
+            onDismiss = { onEvent(ProfileUiEvent.DismissLogoutDialog) },
+        )
     }
 }
 
@@ -395,14 +412,194 @@ private fun SwitchMenuItem(
 private fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text("Dang xuat") },
-        text = { Text("Ban co chac muon dang xuat khoi BiteFast?", style = MaterialTheme.typography.bodyMedium) },
+        icon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text("Đăng xuất") },
+        text = { Text("Bạn có chắc muốn đăng xuất khỏi BiteFast?", style = MaterialTheme.typography.bodyMedium) },
         confirmButton = {
-            BiteFastButton(text = "Dang xuat", onClick = onConfirm)
+            BiteFastButton(text = "Đăng xuất", onClick = onConfirm)
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Huy") }
+            TextButton(onClick = onDismiss) { Text("Hủy") }
         },
     )
+}
+
+// ─── About App Dialog ──────────────────────────────────────────────────────────
+
+@Composable
+private fun AboutAppDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(OrangePrimary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🍔", style = MaterialTheme.typography.headlineMedium)
+            }
+        },
+        title = {
+            Text(
+                "BiteFast",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AboutInfoRow(label = "Phiên bản", value = "1.0.0")
+                AboutInfoRow(label = "Nền tảng", value = "Android")
+                AboutInfoRow(label = "Ngôn ngữ", value = "Tiếng Việt")
+                AboutInfoRow(label = "Nhà phát triển", value = "BiteFast Team")
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Ứng dụng đặt đồ ăn nhanh, tiện lợi. Kết nối bạn với hàng trăm nhà hàng yêu thích.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
+            }
+        },
+        confirmButton = {
+            BiteFastButton(text = "Đóng", onClick = onDismiss)
+        },
+    )
+}
+
+@Composable
+private fun AboutInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.outline),
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+        )
+    }
+}
+
+// ─── Profile Screen Skeleton ──────────────────────────────────────────────────
+
+@Composable
+private fun ProfileScreenSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Avatar shimmer circle
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .shimmerBrush()
+        )
+        Spacer(Modifier.height(14.dp))
+        // Display name shimmer
+        Box(
+            modifier = Modifier
+                .width(160.dp)
+                .height(22.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .shimmerBrush()
+        )
+        Spacer(Modifier.height(8.dp))
+        // Member badge shimmer
+        Box(
+            modifier = Modifier
+                .width(110.dp)
+                .height(16.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .shimmerBrush()
+        )
+        Spacer(Modifier.height(24.dp))
+
+        // Menu Section 1 Skeleton
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                repeat(4) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .shimmerBrush()
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerBrush()
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .shimmerBrush()
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Menu Section 2 Skeleton
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                repeat(3) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .shimmerBrush()
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerBrush()
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(36.dp)
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .shimmerBrush()
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
