@@ -50,4 +50,10 @@ object DatabaseModule {
 
     @Provides
     fun provideAddressDao(database: BiteFastDatabase): AddressDao = database.addressDao()
+
+    @Provides
+    fun provideNotificationDao(database: BiteFastDatabase): com.bitefast.core.database.dao.NotificationDao = database.notificationDao()
+
+    @Provides
+    fun provideFavoriteDao(database: BiteFastDatabase): com.bitefast.core.database.dao.FavoriteDao = database.favoriteDao()
 }
