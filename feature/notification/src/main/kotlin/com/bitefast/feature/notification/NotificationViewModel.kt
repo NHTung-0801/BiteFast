@@ -19,10 +19,10 @@ import javax.inject.Inject
 // ── Filter Enum ─────────────────────────────────────────────────────────────
 
 enum class NotificationFilter(val label: String) {
-    ALL("Tat ca"),
-    ORDER("Don hang"),
-    PROMOTION("Khuyen mai"),
-    SYSTEM("He thong")
+    ALL("Tất cả"),
+    ORDER("Đơn hàng"),
+    PROMOTION("Khuyến mãi"),
+    SYSTEM("Hệ thống")
 }
 
 // ── UiState ─────────────────────────────────────────────────────────────────
@@ -52,6 +52,7 @@ sealed interface NotificationUiEvent : UiEvent {
     data class DeleteNotification(val id: String) : NotificationUiEvent
     data object MarkAllAsRead : NotificationUiEvent
     data object ClearAll : NotificationUiEvent
+    data object Refresh : NotificationUiEvent
     data object ClickBack : NotificationUiEvent
 }
 
@@ -133,6 +134,11 @@ class NotificationViewModel @Inject constructor(
                     clearAllNotificationsUseCase()
                     sendEffect(NotificationUiEffect.ShowSnackbar("Da xoa toan bo thong bao"))
                 }
+            }
+
+            is NotificationUiEvent.Refresh -> {
+                updateState { it.copy(selectedFilter = NotificationFilter.ALL) }
+                observeNotifications()
             }
 
             is NotificationUiEvent.ClickBack -> {

@@ -4,6 +4,14 @@ plugins {
     id("bitefast.android.hilt")
 }
 
+android {
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
@@ -19,4 +27,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    testImplementation(libs.junit5)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

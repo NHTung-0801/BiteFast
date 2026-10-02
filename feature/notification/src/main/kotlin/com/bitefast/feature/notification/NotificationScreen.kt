@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import com.bitefast.core.designsystem.component.shimmerBrush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -166,14 +168,7 @@ fun NotificationScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = OrangePrimary)
-            }
+            NotificationSkeleton(modifier = Modifier.padding(padding))
         } else {
             Column(
                 modifier = Modifier
@@ -213,8 +208,11 @@ fun NotificationScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         EmptyState(
-                            title = "Khong co thong bao nao",
-                            subtitle = "Cac cap nhat ve don hang, khuyen mai va he thong se hien thi o day."
+                            title = "Không có thông báo nào",
+                            subtitle = "Các cập nhật về đơn hàng, khuyến mãi và hệ thống sẽ hiển thị ở đây.",
+                            icon = Icons.Default.Notifications,
+                            actionText = "Làm mới tin tức",
+                            onActionClick = { onEvent(NotificationUiEvent.Refresh) }
                         )
                     }
                 } else {
@@ -366,3 +364,71 @@ private fun formatTimeAgo(time: Long): String {
         else -> "Tuan truoc"
     }
 }
+
+@Composable
+private fun NotificationSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Pills shimmer
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            repeat(4) {
+                Box(
+                    modifier = Modifier
+                        .width(72.dp)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .shimmerBrush()
+                )
+            }
+        }
+        // Notification items shimmer
+        repeat(5) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .shimmerBrush()
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmerBrush()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .height(13.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmerBrush()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(11.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .shimmerBrush()
+                    )
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        }
+    }
+}
+
