@@ -12,13 +12,15 @@ class AndroidHiltConventionPlugin : Plugin<Project> {
             with(pluginManager) {
                 apply("com.google.devtools.ksp")
                 apply("com.google.dagger.hilt.android")
+                apply("org.jetbrains.kotlin.kapt") // KAPT cho hilt-compiler (ổn định hơn KSP trong multi-module)
             }
 
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
             dependencies {
                 add("implementation", libs.findLibrary("hilt-android").get())
-                add("ksp", libs.findLibrary("hilt-compiler").get())
+                // Dùng kapt thay vì ksp cho hilt-compiler để tránh bug KSP multi-round trong multi-module
+                add("kapt", libs.findLibrary("hilt-compiler").get())
             }
         }
     }
