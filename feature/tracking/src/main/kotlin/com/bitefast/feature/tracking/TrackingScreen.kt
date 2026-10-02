@@ -3,11 +3,13 @@ package com.bitefast.feature.tracking
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,12 +26,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Star
@@ -40,8 +43,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +65,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -77,14 +83,6 @@ import com.bitefast.core.designsystem.theme.OrangePrimaryDark
 import com.bitefast.core.designsystem.theme.SuccessGreen
 import com.bitefast.core.model.Order
 import com.bitefast.core.model.OrderStatus
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.Polyline
-import com.google.maps.android.compose.rememberCameraPositionState
 import java.text.DecimalFormat
 
 @Composable
@@ -98,6 +96,12 @@ fun TrackingRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    LaunchedEffect(orderId) {
+        if (orderId.isNotBlank() && orderId != uiState.orderId) {
+            viewModel.loadOrder(orderId)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -129,7 +133,8 @@ fun TrackingRoute(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onEvent = viewModel::onEvent,
-        onNavigateBack = onNavigateBack
+        onNavigateBack = onNavigateBack,
+        onNavigateToHome = onNavigateToHome
     )
 }
 
@@ -140,16 +145,17 @@ fun TrackingScreen(
     snackbarHostState: SnackbarHostState,
     onEvent: (TrackingUiEvent) -> Unit,
     onNavigateBack: () -> Unit,
+    onNavigateToHome: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
-        modifier = modifier.semantics { contentDescription = "Man hinh theo doi don hang" },
+        modifier = modifier.semantics { contentDescription = "Màn hình theo dõi đơn hàng" },
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            text = "Theo doi don hang",
+                            text = "Theo dõi đơn hàng",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -163,8 +169,17 @@ fun TrackingScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Quay lai"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToHome) {
+                        Icon(
+                            imageVector = Icons.Default.Home,
+                            contentDescription = "Về trang chủ",
+                            tint = OrangePrimary
                         )
                     }
                 },
@@ -247,13 +262,13 @@ fun TrackingScreen(
                     ) {
                         if (uiState.orderStatus == OrderStatus.ON_THE_WAY) {
                             BiteFastButton(
-                                text = "Toi da nhan duoc hang",
+                                text = "Tôi đã nhận được hàng",
                                 onClick = { onEvent(TrackingUiEvent.ConfirmDelivered) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         } else if (uiState.orderStatus == OrderStatus.DELIVERED) {
                             BiteFastButton(
-                                text = "Danh gia don hang 5 sao",
+                                text = "Đánh giá đơn hàng ⭐",
                                 onClick = { onEvent(TrackingUiEvent.ClickRateOrder) },
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -265,8 +280,21 @@ fun TrackingScreen(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRed),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Huy don hang nay")
+                                Text("Hủy đơn hàng này")
                             }
+                        }
+
+                        OutlinedButton(
+                            onClick = onNavigateToHome,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Trở về trang chủ")
                         }
                     }
                 }
@@ -277,19 +305,19 @@ fun TrackingScreen(
         if (uiState.showCancelDialog) {
             AlertDialog(
                 onDismissRequest = { onEvent(TrackingUiEvent.DismissCancelDialog) },
-                title = { Text("Xac nhan huy don hang") },
-                text = { Text("Ban co chac chan muon huy don hang nay khong? Thao tac nay khong the hoan tac.") },
+                title = { Text("Xác nhận hủy đơn hàng") },
+                text = { Text("Bạn có chắc chắn muốn hủy đơn hàng này không? Thao tác này không thể hoàn tác.") },
                 confirmButton = {
                     Button(
                         onClick = { onEvent(TrackingUiEvent.ConfirmCancel) },
                         colors = ButtonDefaults.buttonColors(containerColor = ErrorRed)
                     ) {
-                        Text("Xac nhan huy")
+                        Text("Xác nhận hủy")
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { onEvent(TrackingUiEvent.DismissCancelDialog) }) {
-                        Text("Giu lai")
+                        Text("Giữ lại")
                     }
                 }
             )
@@ -297,7 +325,7 @@ fun TrackingScreen(
     }
 }
 
-// ── 1. Map Card with fallback ────────────────────────────────────────────────
+// ── 1. Animated Mock Map Card (works on all emulators without Google Play Maps) ─
 
 @Composable
 private fun TrackingMapCard(
@@ -310,13 +338,20 @@ private fun TrackingMapCard(
     progressPercent: Float,
     modifier: Modifier = Modifier
 ) {
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(driverLat, driverLng), 14.5f)
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "shipper_move")
 
-    LaunchedEffect(driverLat, driverLng) {
-        cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(driverLat, driverLng), 14.5f)
-    }
+    // Animate the shipper dot position along the route
+    val shipperProgress by infiniteTransition.animateFloat(
+        initialValue = progressPercent.coerceIn(0.05f, 0.9f),
+        targetValue = (progressPercent + 0.15f).coerceIn(0.1f, 0.95f),
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shipper_pos"
+    )
+
+    val distanceKm = (1.8f * (1f - progressPercent)).coerceAtLeast(0.1f).formatOneDecimal()
 
     Card(
         modifier = modifier
@@ -327,78 +362,145 @@ private fun TrackingMapCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                uiSettings = MapUiSettings(
-                    zoomControlsEnabled = false,
-                    myLocationButtonEnabled = false,
-                    mapToolbarEnabled = false
-                )
-            ) {
-                Marker(
-                    state = MarkerState(position = LatLng(restaurantLat, restaurantLng)),
-                    title = "Nha hang"
-                )
-                Marker(
-                    state = MarkerState(position = LatLng(customerLat, customerLng)),
-                    title = "Diem giao hang"
-                )
-                Marker(
-                    state = MarkerState(position = LatLng(driverLat, driverLng)),
-                    title = "Tai xe BiteFast"
-                )
-                Polyline(
-                    points = listOf(
-                        LatLng(restaurantLat, restaurantLng),
-                        LatLng(driverLat, driverLng),
-                        LatLng(customerLat, customerLng)
-                    ),
-                    color = OrangePrimary,
-                    width = 10f
-                )
-            }
-
-            // Fallback & Live Overlay Route progress
+            // Map background gradient
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.15f))
-                    .padding(12.dp),
-                contentAlignment = Alignment.BottomCenter
+                    .background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFE8F5E9),
+                                Color(0xFFE3F2FD),
+                                Color(0xFFFFF8E1)
+                            )
+                        )
+                    )
+            )
+
+            // Route canvas with animated shipper dot
+            val orangeColor = OrangePrimary
+            val successColor = SuccessGreen
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val startX = size.width * 0.15f
+                val startY = size.height * 0.75f
+                val endX = size.width * 0.85f
+                val endY = size.height * 0.25f
+
+                // Dashed route line
+                drawLine(
+                    color = Color(0xFFBDBDBD),
+                    start = Offset(startX, startY),
+                    end = Offset(endX, endY),
+                    strokeWidth = 6f,
+                    cap = StrokeCap.Round,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 10f))
+                )
+
+                // Completed route (orange)
+                val shipperX = startX + (endX - startX) * shipperProgress
+                val shipperY = startY + (endY - startY) * shipperProgress
+                drawLine(
+                    color = orangeColor,
+                    start = Offset(startX, startY),
+                    end = Offset(shipperX, shipperY),
+                    strokeWidth = 8f,
+                    cap = StrokeCap.Round
+                )
+
+                // Restaurant marker (green)
+                drawCircle(color = successColor, radius = 22f, center = Offset(startX, startY))
+                drawCircle(color = Color.White, radius = 14f, center = Offset(startX, startY))
+
+                // Customer marker (orange)
+                drawCircle(color = orangeColor, radius = 22f, center = Offset(endX, endY))
+                drawCircle(color = Color.White, radius = 14f, center = Offset(endX, endY))
+
+                // Animated shipper dot with pulsing ring
+                drawCircle(
+                    color = orangeColor.copy(alpha = 0.3f),
+                    radius = 28f,
+                    center = Offset(shipperX, shipperY)
+                )
+                drawCircle(
+                    color = orangeColor,
+                    radius = 18f,
+                    center = Offset(shipperX, shipperY)
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 8f,
+                    center = Offset(shipperX, shipperY)
+                )
+            }
+
+            // Overlay: map labels
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp)
             ) {
+                // Restaurant label
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    shadowElevation = 3.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.align(Alignment.BottomStart),
+                    color = SuccessGreen.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.DirectionsBike,
-                                contentDescription = null,
-                                tint = OrangePrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Shipper dang cach ban ${(1.8f * (1f - progressPercent)).coerceAtLeast(0.1f).formatOneDecimal()} km",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                    Text(
+                        text = "🍽 Nhà hàng",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White
+                    )
+                }
+
+                // Customer label
+                Surface(
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    color = OrangePrimary.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(
+                        text = "📍 Bạn",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White
+                    )
+                }
+            }
+
+            // Bottom info strip
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.DirectionsBike,
+                            contentDescription = null,
+                            tint = OrangePrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "${(progressPercent * 100).toInt()}% tuyen duong",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = OrangePrimaryDark,
-                            fontWeight = FontWeight.Bold
+                            text = "Shipper cách bạn $distanceKm km",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
+                    Text(
+                        text = "${(progressPercent * 100).toInt()}% tuyến đường",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = OrangePrimaryDark,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -443,13 +545,13 @@ private fun EtaStatusCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = when (orderStatus) {
-                        OrderStatus.PENDING -> "Dang cho nha hang xac nhan"
-                        OrderStatus.CONFIRMED -> "Nha hang da nhan don"
-                        OrderStatus.PREPARING -> "Nha hang dang che bien mon"
-                        OrderStatus.READY -> "Mon an da san sang"
-                        OrderStatus.ON_THE_WAY -> "Tai xe dang giao den ban"
-                        OrderStatus.DELIVERED -> "Giao hang thanh cong!"
-                        OrderStatus.CANCELED -> "Don hang da bi huy"
+                        OrderStatus.PENDING -> "Đang chờ nhà hàng xác nhận"
+                        OrderStatus.CONFIRMED -> "Nhà hàng đã nhận đơn"
+                        OrderStatus.PREPARING -> "Nhà hàng đang chế biến món"
+                        OrderStatus.READY -> "Món ăn đã sẵn sàng"
+                        OrderStatus.ON_THE_WAY -> "Tài xế đang giao đến bạn"
+                        OrderStatus.DELIVERED -> "Giao hàng thành công! 🎉"
+                        OrderStatus.CANCELED -> "Đơn hàng đã bị hủy"
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
@@ -466,11 +568,11 @@ private fun EtaStatusCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = if (orderStatus == OrderStatus.DELIVERED) {
-                            "Da giao luc: Vua xong"
+                            "Đã giao lúc: Vừa xong"
                         } else if (orderStatus == OrderStatus.CANCELED) {
-                            "Don da ngung xu ly"
+                            "Đơn đã ngừng xử lý"
                         } else {
-                            "Du kien giao trong: $etaMinutes phut"
+                            "Dự kiến giao trong: $etaMinutes phút"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -505,10 +607,10 @@ private fun OrderStatusStepper(
     modifier: Modifier = Modifier
 ) {
     val steps = listOf(
-        "Xac nhan don" to "Nha hang tiep nhan",
-        "Chuan bi mon" to "Bep dang che bien nong hoi",
-        "Dang giao hang" to "Tai xe dang di chuyen den ban",
-        "Giao thanh cong" to "Chuc ban ngon mieng"
+        "Xác nhận đơn" to "Nhà hàng tiếp nhận",
+        "Chuẩn bị món" to "Bếp đang chế biến nóng hổi",
+        "Đang giao hàng" to "Tài xế đang di chuyển đến bạn",
+        "Giao thành công" to "Chúc bạn ngon miệng! 😋"
     )
 
     Card(
@@ -520,7 +622,7 @@ private fun OrderStatusStepper(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Tien trinh giao hang",
+                text = "Tiến trình giao hàng",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -664,7 +766,7 @@ private fun DriverInfoCard(
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
-                            text = "4.9 (1.2k+ chuyen)",
+                            text = "4.9 (1.2k+ chuyến)",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -684,7 +786,7 @@ private fun DriverInfoCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Message,
+                            imageVector = Icons.AutoMirrored.Filled.Message,
                             contentDescription = "Nhắn tin cho tài xế",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
@@ -741,7 +843,7 @@ private fun OrderSummaryCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = order.restaurantName.ifBlank { "Nha hang doi tac BiteFast" },
+                    text = order.restaurantName.ifBlank { "Nhà hàng đối tác BiteFast" },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -758,13 +860,13 @@ private fun OrderSummaryCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = order.address.streetAddress.ifBlank { "Dia chi giao hang mac dinh" },
+                    text = order.address.streetAddress.ifBlank { "Địa chỉ giao hàng mặc định" },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             order.items.forEach { item ->
                 Row(
@@ -786,7 +888,7 @@ private fun OrderSummaryCard(
                 }
             }
 
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -794,7 +896,7 @@ private fun OrderSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Tong thanh toan",
+                    text = "Tổng thanh toán",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )

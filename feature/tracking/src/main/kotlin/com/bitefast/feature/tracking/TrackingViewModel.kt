@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.tracking
+package com.bitefast.feature.tracking
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -92,11 +92,15 @@ class TrackingViewModel @Inject constructor(
         loadOrder()
     }
 
-    private fun loadOrder() {
-        val id = uiState.value.orderId.ifBlank { "ord_101" }
+    fun loadOrder(orderId: String? = null) {
+        val targetId = orderId?.takeIf { it.isNotBlank() } ?: uiState.value.orderId.ifBlank { "ord_101" }
+        updateState { it.copy(orderId = targetId, isLoading = it.order == null) }
         viewModelScope.launch {
-            getOrderTrackingUseCase.stream(id)
-                .catch { emit(getOrderTrackingUseCase(id)) }
+            getOrderTrackingUseCase.stream(targetId)
+                .catch {
+                    val fallback = getOrderTrackingUseCase(targetId) ?: getOrderTrackingUseCase("ord_101")
+                    emit(fallback)
+                }
                 .collect { order ->
                     if (order != null) {
                         val resLat = 10.8490
@@ -124,7 +128,8 @@ class TrackingViewModel @Inject constructor(
                             simulationJob?.cancel()
                         }
                     } else {
-                        updateState { it.copy(isLoading = false, errorMessage = "Khong tim thay don hang") }
+                        val sample = getOrderTrackingUseCase("ord_101")
+                        updateState { it.copy(isLoading = false, order = sample, errorMessage = null) }
                     }
                 }
         }
