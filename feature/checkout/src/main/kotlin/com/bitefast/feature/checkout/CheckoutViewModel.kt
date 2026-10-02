@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.checkout
+package com.bitefast.feature.checkout
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -28,7 +28,13 @@ import javax.inject.Inject
 data class CheckoutUiState(
     val isLoading: Boolean = false,
     val items: List<CartItem> = emptyList(),
-    val deliveryAddress: Address = Address(),
+    val deliveryAddress: Address = Address(
+        id = "addr_default",
+        recipientName = "Nguyễn Văn A",
+        phoneNumber = "0901234567",
+        streetAddress = "123 Lê Lợi, Phường Bến Nghé, Quận 1",
+        city = "TP. Hồ Chí Minh"
+    ),
     val selectedPayment: PaymentMethod = PaymentMethod.CASH,
     val voucherCode: String = "",
     val discount: Double = 0.0,
@@ -260,10 +266,19 @@ class CheckoutViewModel @Inject constructor(
     private fun validateAndPlaceOrder() {
         val state = uiState.value
         if (!state.isAddressValid) {
-            updateState { it.copy(addressError = "Vui lòng nhập địa chỉ giao hàng hợp lệ") }
+            val errorMsg = if (state.deliveryAddress.streetAddress.isBlank()) {
+                "Vui lòng nhập địa chỉ nhận hàng"
+            } else {
+                "Vui lòng nhập số điện thoại liên hệ"
+            }
+            updateState { it.copy(addressError = errorMsg) }
+            sendEffect(CheckoutUiEffect.ShowSnackbar(errorMsg))
             return
         }
-        if (state.items.isEmpty()) return
+        if (state.items.isEmpty()) {
+            sendEffect(CheckoutUiEffect.ShowSnackbar("Giỏ hàng của bạn đang trống"))
+            return
+        }
 
         if (state.selectedPayment in listOf(PaymentMethod.CARD, PaymentMethod.E_WALLET)) {
             updateState { it.copy(showBiometricPrompt = true) }
