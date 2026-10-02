@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.cart
+package com.bitefast.feature.cart
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -69,6 +70,8 @@ import com.bitefast.core.model.CartItem
 @Composable
 fun CartRoute(
     onNavigateToCheckout: () -> Unit,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = onNavigateBack,
     viewModel: CartViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,6 +90,7 @@ fun CartRoute(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onEvent = viewModel::onEvent,
+        onNavigateBack = onNavigateBack,
     )
 }
 
@@ -98,6 +102,8 @@ fun CartScreen(
     uiState: CartUiState,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onEvent: (CartUiEvent) -> Unit,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = onNavigateBack,
 ) {
     // RestaurantConflict Dialog
     if (uiState.showConflictDialog) {
@@ -112,9 +118,21 @@ fun CartScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                },
                 title = {
                     Column {
-                        Text("Gi? hàng c?a b?n", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                        Text(
+                            "Giỏ hàng của bạn",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                        )
                         AnimatedVisibility(visible = uiState.itemCount > 0) {
                             Text(
                                 "${uiState.itemCount} món",
@@ -127,7 +145,11 @@ fun CartScreen(
                 actions = {
                     if (uiState.items.isNotEmpty()) {
                         IconButton(onClick = { onEvent(CartUiEvent.ClearCart) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Xóa t?t c?", tint = MaterialTheme.colorScheme.error)
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Xóa tất cả",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 },
@@ -149,7 +171,7 @@ fun CartScreen(
     ) { paddingValues ->
         if (uiState.items.isEmpty()) {
             EmptyCartView(
-                onAddSample = { onEvent(CartUiEvent.AddSampleItem) },
+                onNavigateToHome = onNavigateToHome,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
@@ -166,7 +188,7 @@ fun CartScreen(
                 item(key = "restaurant_header") {
                     uiState.items.firstOrNull()?.let { first ->
                         Text(
-                            text = "T?: ${first.restaurantId}",
+                            text = "Từ: ${first.restaurantId}",
                             style = MaterialTheme.typography.labelMedium,
                             color = OrangePrimary,
                             modifier = Modifier.padding(bottom = 4.dp),
@@ -200,13 +222,13 @@ fun CartScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PriceRow("T?m tính", uiState.subtotal)
+                            PriceRow("Tạm tính", uiState.subtotal)
                             PriceRow("Phí giao hàng", uiState.deliveryFee)
                             if (uiState.discount > 0) {
-                                PriceRow("Gi?m giá", -uiState.discount, isHighlight = true)
+                                PriceRow("Giảm giá", -uiState.discount, isHighlight = true)
                             }
                             HorizontalDivider()
-                            PriceRow("T?ng c?ng", uiState.total, isHighlight = true)
+                            PriceRow("Tổng cộng", uiState.total, isHighlight = true)
                         }
                     }
                 }
@@ -256,7 +278,7 @@ private fun VoucherCartBanner(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("??", modifier = Modifier.size(18.dp))
+                Text("🎁", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = upsell,
@@ -320,7 +342,7 @@ private fun CartItemCard(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "%,.0fd".format(item.totalPrice),
+                    text = "%,.0fđ".format(item.totalPrice),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = OrangePrimary,
                 )
@@ -333,7 +355,6 @@ private fun CartItemCard(
                 quantity = item.quantity,
                 onIncrease = onIncrease,
                 onDecrease = onDecrease,
-                
             )
         }
     }
@@ -343,30 +364,20 @@ private fun CartItemCard(
 
 @Composable
 private fun EmptyCartView(
-    onAddSample: () -> Unit,
+    onNavigateToHome: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(24.dp),
-        ) {
-            EmptyState(
-                title = "Gi? hàng tr?ng",
-                subtitle = "B?n chua có món an nào trong gi? hàng. Hãy khám phá th?c don h?p d?n nhé!",
-            )
-            BiteFastButton(
-                text = "Thêm món an m?u",
-                onClick = onAddSample,
-                modifier = Modifier
-                    .width(200.dp)
-                    .semantics { contentDescription = "Them mon mau" },
-            )
-        }
+        EmptyState(
+            title = "Giỏ hàng của bạn đang trống",
+            subtitle = "Hãy khám phá hàng trăm món ngon hấp dẫn xung quanh bạn ngay!",
+            icon = Icons.Default.ShoppingCart,
+            actionText = "Khám phá món ngon ngay",
+            onActionClick = onNavigateToHome,
+        )
     }
 }
 
@@ -393,16 +404,19 @@ private fun CartBottomBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("T?ng thanh toán", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 Text(
-                    text = "%,.0fd".format(uiState.total),
+                    "Tổng thanh toán",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                    text = "%,.0fđ".format(uiState.total),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                     color = OrangePrimary,
                 )
             }
             Spacer(Modifier.height(12.dp))
             BiteFastButton(
-                text = "Ti?n hành thanh toán",
+                text = "Tiến hành thanh toán",
                 onClick = { onEvent(CartUiEvent.Checkout) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -416,9 +430,13 @@ private fun PriceRow(label: String, amount: Double, isHighlight: Boolean = false
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
-            text = "%,.0fd".format(amount),
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "%,.0fđ".format(amount),
             style = MaterialTheme.typography.bodyMedium,
             color = if (isHighlight) OrangePrimary else MaterialTheme.colorScheme.onSurface,
         )
@@ -439,24 +457,24 @@ fun RestaurantConflictDialog(
             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
         },
         title = {
-            Text("Gi? hàng t? nhà hàng khác", style = MaterialTheme.typography.titleLarge)
+            Text("Giỏ hàng từ nhà hàng khác", style = MaterialTheme.typography.titleLarge)
         },
         text = {
             Text(
-                "B?n dang có món an t? \"$currentRestaurantName\" trong gi? hàng. " +
-                    "Thêm món t? nhà hàng khác s? xóa gi? hàng hi?n t?i. B?n có mu?n ti?p t?c?",
+                "Bạn đang có món ăn từ \"$currentRestaurantName\" trong giỏ hàng. " +
+                    "Thêm món từ nhà hàng khác sẽ xóa giỏ hàng hiện tại. Bạn có muốn tiếp tục?",
                 style = MaterialTheme.typography.bodyMedium,
             )
         },
         confirmButton = {
             BiteFastButton(
-                text = "Xóa và thêm m?i",
+                text = "Xóa và thêm mới",
                 onClick = onConfirm,
             )
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Gi? nguyên")
+                Text("Giữ nguyên")
             }
         },
     )
