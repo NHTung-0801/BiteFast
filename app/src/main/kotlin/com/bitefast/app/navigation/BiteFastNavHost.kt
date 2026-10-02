@@ -1,4 +1,4 @@
-﻿package com.bitefast.app.navigation
+package com.bitefast.app.navigation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -25,83 +25,73 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bitefast.core.designsystem.theme.OrangePrimary
+import com.bitefast.feature.auth.LoginRoute
+import com.bitefast.feature.auth.RegisterRoute
 import com.bitefast.feature.auth.component.LoginGateBottomSheet
-import com.bitefast.feature.auth.navigation.loginScreen
-import com.bitefast.feature.auth.navigation.navigateToLogin
-import com.bitefast.feature.auth.navigation.navigateToRegister
-import com.bitefast.feature.auth.navigation.registerScreen
 import com.bitefast.feature.cart.CartRoute
 import com.bitefast.feature.checkout.CheckoutRoute
 import com.bitefast.feature.detail.DetailRoute
 import com.bitefast.feature.discovery.DiscoveryRoute
+import com.bitefast.feature.notification.NotificationRoute
 import com.bitefast.feature.order.OrderRoute
 import com.bitefast.feature.profile.ProfileRoute
+import com.bitefast.feature.profile.edit.EditProfileRoute
 import com.bitefast.feature.rating.RatingRoute
-import com.bitefast.feature.notification.NotificationRoute
 import com.bitefast.feature.tracking.TrackingRoute
 import com.bitefast.feature.voucher.VoucherWalletRoute
-
-// â”€â”€â”€ Route constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const val DETAIL_ROUTE = "detail/{restaurantId}"
-const val CHECKOUT_ROUTE = "checkout"
-const val TRACKING_ROUTE = "tracking/{orderId}"
-const val RATING_ROUTE = "rating/{orderId}"
-const val NOTIFICATION_ROUTE = "notification"
-const val VOUCHER_WALLET_ROUTE = "voucher_wallet"
-
-/** Route destinations cÃ³ bottom bar áº©n Ä‘i. */
-private val ROUTES_WITHOUT_BOTTOM_BAR = setOf(
-    "login", "register",
-    "checkout",
-    "detail/{restaurantId}",
-    "tracking/{orderId}",
-    "rating/{orderId}",
-    "notification",
-    "voucher_wallet",
-)
-
-// â”€â”€â”€ Top-level destinations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-private val TOP_LEVEL_ROUTES = TopLevelDestination.entries.map { it.route }.toSet()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BiteFastApp(
-    /** Sá»‘ lÆ°á»£ng item trong giá» â€” dÃ¹ng cho badge trÃªn tab Giá» hÃ ng. */
+    /** Số lượng item trong giỏ — dùng cho badge trên tab Giỏ hàng. */
     cartItemCount: Int = 0,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val currentDestination = navBackStackEntry?.destination
 
     var showLoginGate by remember { mutableStateOf(false) }
 
-    val showBottomBar = currentRoute !in ROUTES_WITHOUT_BOTTOM_BAR
+    // Chỉ hiển thị BottomBar tại 4 TopLevelDestinations (Khám phá, Giỏ hàng, Đơn hàng, Tài khoản)
+    val isTopLevelDestination = TopLevelDestination.entries.any { destination ->
+        currentDestination?.hierarchy?.any { it.hasRoute(destination.targetClass) } == true
+    }
 
     Scaffold(
         bottomBar = {
             AnimatedVisibility(
-                visible = showBottomBar,
+                visible = isTopLevelDestination,
                 enter = slideInVertically(tween(200)) { it } + fadeIn(tween(200)),
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200)),
             ) {
                 BiteFastBottomBar(
-                    currentRoute = currentRoute,
+                    navBackStackEntry = navBackStackEntry,
                     cartItemCount = cartItemCount,
                     onDestinationSelected = { destination ->
-                        navController.navigate(destination.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                        val popped = when (destination) {
+                            TopLevelDestination.DISCOVERY -> navController.popBackStack<DiscoveryDestination>(inclusive = false)
+                            TopLevelDestination.CART -> navController.popBackStack<CartDestination>(inclusive = false)
+                            TopLevelDestination.ORDERS -> navController.popBackStack<OrdersDestination>(inclusive = false)
+                            TopLevelDestination.PROFILE -> navController.popBackStack<ProfileDestination>(inclusive = false)
+                        }
+                        if (!popped) {
+                            navController.navigate(destination.destination) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 )
@@ -111,7 +101,7 @@ fun BiteFastApp(
 
         NavHost(
             navController = navController,
-            startDestination = TopLevelDestination.DISCOVERY.route,
+            startDestination = DiscoveryDestination,
             modifier = Modifier.padding(paddingValues),
             enterTransition = { fadeIn(tween(220)) },
             exitTransition = { fadeOut(tween(220)) },
@@ -119,154 +109,332 @@ fun BiteFastApp(
             popExitTransition = { fadeOut(tween(220)) },
         ) {
 
-            // â”€â”€ Tab 1: Discovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(TopLevelDestination.DISCOVERY.route) {
+            // ── Tab 1: Discovery (Khám phá) ──────────────────────────────────
+            composable<DiscoveryDestination> {
                 DiscoveryRoute(
                     onNavigateToDetail = { restaurantId ->
-                        navController.navigate("detail/$restaurantId")
+                        navController.navigate(RestaurantDetailDestination(restaurantId))
+                    },
+                    onNavigateToSearch = {
+                        navController.navigate(SearchDestination)
                     }
                 )
             }
 
-            // â”€â”€ Tab 2: Cart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(TopLevelDestination.CART.route) {
+            // ── Tìm kiếm Chuyên sâu ──────────────────────────────────────────
+            composable<SearchDestination> {
+                com.bitefast.feature.discovery.search.SearchRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetail = { restaurantId ->
+                        navController.navigate(RestaurantDetailDestination(restaurantId))
+                    }
+                )
+            }
+
+            // ── Tab 2: Cart (Giỏ hàng) ───────────────────────────────────────
+            composable<CartDestination> {
                 CartRoute(
                     onNavigateToCheckout = {
-                        showLoginGate = true      // Triggers LoginGate for guests
+                        navController.navigate(CheckoutDestination)
+                    },
+                    onNavigateBack = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(DiscoveryDestination) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     }
                 )
             }
 
-            // â”€â”€ Tab 3: Orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(TopLevelDestination.ORDERS.route) {
+            // ── Tab 3: Orders (Đơn hàng) ─────────────────────────────────────
+            composable<OrdersDestination> {
                 OrderRoute(
                     onNavigateToTracking = { orderId ->
-                        navController.navigate("tracking/$orderId")
+                        navController.navigate(TrackingDestination(orderId))
                     },
                     onNavigateToDetail = { restaurantId ->
-                        navController.navigate("detail/$restaurantId")
+                        navController.navigate(RestaurantDetailDestination(restaurantId))
+                    },
+                    onNavigateToOrderDetail = { orderId ->
+                        navController.navigate(OrderDetailDestination(orderId))
+                    },
+                    onNavigateBack = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(DiscoveryDestination) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     }
                 )
             }
 
-            // â”€â”€ Tab 4: Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(TopLevelDestination.PROFILE.route) {
+            // ── Chi tiết Đơn hàng & Hóa đơn ──────────────────────────────────
+            composable<OrderDetailDestination> { backStackEntry ->
+                val destination: OrderDetailDestination = backStackEntry.toRoute()
+                com.bitefast.feature.order.detail.OrderDetailRoute(
+                    orderId = destination.orderId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTracking = { orderId ->
+                        navController.navigate(TrackingDestination(orderId))
+                    },
+                    onNavigateToRating = { orderId ->
+                        navController.navigate(RatingDestination(orderId))
+                    },
+                    onNavigateToDetail = { restaurantId ->
+                        navController.navigate(RestaurantDetailDestination(restaurantId))
+                    },
+                    onNavigateToCart = {
+                        navController.navigate(CartDestination) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // ── Tab 4: Profile (Tài khoản) ───────────────────────────────────
+            composable<ProfileDestination> { backStackEntry ->
+                // Lắng nghe kết quả từ EditProfile: tự động ReloadUser khi quay về
+                val profileUpdated = backStackEntry.savedStateHandle
+                    .getStateFlow("profile_updated", false)
+                    .collectAsStateWithLifecycle()
+
                 ProfileRoute(
+                    profileUpdatedSignal = profileUpdated.value,
+                    onProfileReloadConsumed = {
+                        backStackEntry.savedStateHandle["profile_updated"] = false
+                    },
                     onNavigateToLogin = {
-                        navController.navigateToLogin()
+                        navController.navigate(LoginDestination)
                     },
                     onNavigateToOrderHistory = {
-                        navController.navigate(TopLevelDestination.ORDERS.route) {
+                        navController.navigate(OrdersDestination) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToVoucherWallet = {
+                        navController.navigate(VoucherWalletDestination)
+                    },
+                    onNavigateToAddresses = {
+                        navController.navigate(AddressListDestination)
+                    },
+                    onNavigateToFavorites = {
+                        navController.navigate(WishlistDestination)
+                    },
+                    onNavigateToEditProfile = {
+                        navController.navigate(EditProfileDestination)
+                    }
+                )
+            }
+
+            // ── Chỉnh Sửa Hồ Sơ Cá Nhân ──────────────────────────────────────
+            composable<EditProfileDestination> {
+                EditProfileRoute(
+                    onNavigateBack = {
+                        // Báo hiệu ProfileDestination cần reload user sau khi save thành công
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("profile_updated", true)
+                        navController.popBackStack()
+                    },
+                )
+            }
+
+            // ── Danh Sách Yêu Thích (Món ăn & Quán yêu thích) ───────────────
+            composable<WishlistDestination> {
+                com.bitefast.feature.profile.favorites.FavoritesRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetail = { restaurantId ->
+                        navController.navigate(RestaurantDetailDestination(restaurantId))
+                    },
+                    onNavigateToHome = {
+                        navController.navigate(DiscoveryDestination) {
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
                             launchSingleTop = true
                         }
                     }
                 )
             }
 
-            // â”€â”€ Detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(
-                route = DETAIL_ROUTE,
-                arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val restaurantId = backStackEntry.arguments?.getString("restaurantId") ?: ""
+            // ── Sổ Địa Chỉ & Ghim Tọa Độ Bản Đồ ─────────────────────────────
+            composable<AddressListDestination> {
+                com.bitefast.feature.profile.address.AddressListRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPicker = {
+                        navController.navigate(AddressPickerDestination())
+                    }
+                )
+            }
+
+            composable<AddressPickerDestination> { backStackEntry ->
+                val destination: AddressPickerDestination = backStackEntry.toRoute()
+                com.bitefast.feature.profile.address.AddressPickerMapRoute(
+                    initialLat = destination.initialLat,
+                    initialLng = destination.initialLng,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // ── Chi tiết Nhà hàng & Thực đơn ─────────────────────────────────
+            composable<RestaurantDetailDestination> { backStackEntry ->
+                val destination: RestaurantDetailDestination = backStackEntry.toRoute()
                 DetailRoute(
-                    restaurantId = restaurantId,
+                    restaurantId = destination.restaurantId,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToCart = {
-                        navController.navigate(TopLevelDestination.CART.route) {
+                        navController.navigate(CartDestination) {
                             launchSingleTop = true
                         }
                     }
                 )
             }
 
-            // â”€â”€ Checkout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(CHECKOUT_ROUTE) {
+            // ── Kho Voucher Khuyến Mãi ───────────────────────────────────────
+            composable<VoucherWalletDestination> {
+                VoucherWalletRoute(
+                    onNavigateBack = { navController.popBackStack() },
+                    onVoucherSelected = { _, _ ->
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            // ── Thanh toán Đơn hàng ──────────────────────────────────────────
+            composable<CheckoutDestination> {
                 CheckoutRoute(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToTracking = { orderId ->
-                        navController.navigate("tracking/$orderId") {
-                            popUpTo(CHECKOUT_ROUTE) { inclusive = true }
+                        navController.navigate(TrackingDestination(orderId)) {
+                            popUpTo<CheckoutDestination> { inclusive = true }
+                        }
+                    },
+                    onNavigateToPaymentResult = { orderId, qrUrl, amount ->
+                        navController.navigate(PaymentResultDestination(orderId = orderId, amount = amount, qrPayload = qrUrl)) {
+                            popUpTo<CheckoutDestination> { inclusive = true }
                         }
                     }
                 )
             }
 
-            // â”€â”€ Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(
-                route = TRACKING_ROUTE,
-                arguments = listOf(navArgument("orderId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            // ── Kết quả Thanh toán VietQR Động ──────────────────────────────
+            composable<PaymentResultDestination> { backStackEntry ->
+                val destination: PaymentResultDestination = backStackEntry.toRoute()
+                com.bitefast.feature.checkout.payment.PaymentResultRoute(
+                    orderId = destination.orderId,
+                    amount = destination.amount,
+                    qrPayload = destination.qrPayload,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToTracking = { orderId ->
+                        navController.navigate(TrackingDestination(orderId)) {
+                            popUpTo<CheckoutDestination> { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // ── Theo dõi Vận chuyển GPS ──────────────────────────────────────
+            composable<TrackingDestination> { backStackEntry ->
+                val destination: TrackingDestination = backStackEntry.toRoute()
                 TrackingRoute(
-                    orderId = orderId,
+                    orderId = destination.orderId,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToHome = {
-                        navController.navigate(TopLevelDestination.DISCOVERY.route) {
+                        navController.navigate(DiscoveryDestination) {
                             popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
                             launchSingleTop = true
                         }
                     },
                     onNavigateToRating = { id ->
-                        navController.navigate("rating/$id")
+                        navController.navigate(RatingDestination(id))
                     }
                 )
             }
 
-            // â”€â”€ Rating â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            composable(
-                route = RATING_ROUTE,
-                arguments = listOf(navArgument("orderId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            // ── Đánh giá Dịch vụ ─────────────────────────────────────────────
+            composable<RatingDestination> { backStackEntry ->
+                val destination: RatingDestination = backStackEntry.toRoute()
                 RatingRoute(
-                    orderId = orderId,
+                    orderId = destination.orderId,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            composable(NOTIFICATION_ROUTE) {
+            // ── Trung tâm Thông báo ──────────────────────────────────────────
+            composable<NotificationDestination> {
                 NotificationRoute(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToOrder = { orderId ->
-                        navController.navigate("tracking/$orderId")
+                        navController.navigate(TrackingDestination(orderId))
                     }
                 )
             }
 
-            // â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            loginScreen(
-                onNavigateToHome = {
-                    navController.navigate(TopLevelDestination.DISCOVERY.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
-                        launchSingleTop = true
+            // ── Nhóm Màn hình Xác thực (Auth) ────────────────────────────────
+            composable<LoginDestination> {
+                LoginRoute(
+                    onNavigateToHome = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(DiscoveryDestination) {
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(RegisterDestination)
+                    },
+                    onNavigateToForgotPassword = {
+                        navController.navigate(ForgotPasswordDestination())
                     }
-                },
-                onNavigateToRegister = { navController.navigateToRegister() }
-            )
+                )
+            }
 
-            registerScreen(
-                onNavigateToHome = {
-                    navController.navigate(TopLevelDestination.DISCOVERY.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
-                        launchSingleTop = true
+            composable<RegisterDestination> {
+                RegisterRoute(
+                    onNavigateToHome = {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(DiscoveryDestination) {
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.popBackStack()
                     }
-                },
-                onNavigateToLogin = { navController.popBackStack() }
-            )
+                )
+            }
+
+            composable<ForgotPasswordDestination> { backStackEntry ->
+                val destination: ForgotPasswordDestination = backStackEntry.toRoute()
+                com.bitefast.feature.auth.forgot.ForgotPasswordRoute(
+                    initialIdentifier = destination.initialEmailOrPhone,
+                    onNavigateToLogin = {
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
 
-        // â”€â”€ Login Gate Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Login Gate Bottom Sheet Chặn Khách Vãng Lai ──────────────────────
         if (showLoginGate) {
             LoginGateBottomSheet(
                 onDismiss = { showLoginGate = false },
                 onNavigateToLogin = {
                     showLoginGate = false
-                    navController.navigateToLogin()
+                    navController.navigate(LoginDestination)
                 },
                 onNavigateToRegister = {
                     showLoginGate = false
-                    navController.navigateToRegister()
+                    navController.navigate(RegisterDestination)
                 },
                 cartItemCount = cartItemCount,
             )
@@ -274,25 +442,29 @@ fun BiteFastApp(
     }
 }
 
-// â”€â”€â”€ Bottom Navigation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Bottom Navigation Bar ───────────────────────────────────────────────────
 
 @Composable
 private fun BiteFastBottomBar(
-    currentRoute: String?,
+    navBackStackEntry: androidx.navigation.NavBackStackEntry?,
     cartItemCount: Int,
     onDestinationSelected: (TopLevelDestination) -> Unit,
 ) {
+    val currentDestination = navBackStackEntry?.destination
+
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = androidx.compose.ui.unit.Dp(3f),
     ) {
         TopLevelDestination.entries.forEach { destination ->
-            val isSelected = currentRoute == destination.route
+            val isSelected = currentDestination?.hierarchy?.any {
+                it.hasRoute(destination.targetClass)
+            } == true
+
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onDestinationSelected(destination) },
                 icon = {
-                    // Badge sá»‘ lÆ°á»£ng giá» hÃ ng
                     if (destination == TopLevelDestination.CART && cartItemCount > 0) {
                         BadgedBox(
                             badge = {
