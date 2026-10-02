@@ -39,7 +39,7 @@ class VoucherViewModelTest {
     private val sampleVoucher = Voucher(
         id = "v_1",
         code = "WELCOME50",
-        name = "Gi?m 50k",
+        name = "Giảm 50k",
         type = "fixed",
         value = 50000.0,
         minOrderValue = 100000.0,
@@ -139,7 +139,7 @@ class VoucherViewModelTest {
     @DisplayName("onEvent ApplyCustomCode: when invalid sets customCodeError")
     fun applyCustomCode_invalid_setsError() = runTest {
         coEvery { applyVoucherUseCase("WRONG", any(), any(), any(), any()) } returns
-            VoucherValidationResult.Invalid(VoucherInvalidReason.NOT_FOUND, "M� kh�ng h?p l?")
+            VoucherValidationResult.Invalid(VoucherInvalidReason.NOT_FOUND, "Mã không hợp lệ")
 
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -148,7 +148,7 @@ class VoucherViewModelTest {
         viewModel.onEvent(VoucherUiEvent.ApplyCustomCode)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("M� kh�ng h?p l?", viewModel.uiState.value.customCodeError)
+        assertEquals("Mã không hợp lệ", viewModel.uiState.value.customCodeError)
         assertFalse(viewModel.uiState.value.isValidatingCustomCode)
     }
 

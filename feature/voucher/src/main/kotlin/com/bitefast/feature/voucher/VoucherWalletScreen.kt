@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.voucher
+package com.bitefast.feature.voucher
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,8 +24,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.draw.clip
+import com.bitefast.core.designsystem.component.shimmerBrush
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -207,9 +212,7 @@ fun VoucherWalletScreen(
 
             // ── Voucher List ─────────────────────────────────────────────────
             if (uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = OrangePrimary)
-                }
+                VoucherWalletSkeleton()
             } else if (uiState.currentItems.isEmpty()) {
                 EmptyState(
                     title = "Chưa có voucher phù hợp",
@@ -244,3 +247,61 @@ fun VoucherWalletScreen(
         }
     }
 }
+
+@Composable
+private fun VoucherWalletSkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        repeat(4) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(108.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .width(84.dp)
+                            .fillMaxHeight()
+                            .shimmerBrush()
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(80.dp)
+                                .height(18.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerBrush()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerBrush()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerBrush()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
