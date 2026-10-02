@@ -1,188 +1,302 @@
-﻿# 🍔 BITEFAST — FOOD DELIVERY & LIVE TRACKING (ANDROID NATIVE)
+# 🍔 BiteFast — Modern Food Delivery & Live Tracking
 
-[![Kotlin Version](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg?logo=kotlin)](https://kotlinlang.org)
-[![Android Gradle Plugin](https://img.shields.io/badge/AGP-8.7.0-green.svg?logo=android)](https://developer.android.com)
-[![Jetpack Compose](https://img.shields.io/badge/Compose_BOM-2024.12.01-brightgreen.svg?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVI%2FUDF-orange.svg)](https://developer.android.com/topic/architecture)
-[![Security Level](https://img.shields.io/badge/Security-OWASP%20Mobile%20Top%2010-red.svg)](https://owasp.org)
-[![A11y Standard](https://img.shields.io/badge/Accessibility-WCAG%202.1%20AA-purple.svg)](https://www.w3.org/WAI/standards-guidelines/wcag/)
+> **Enterprise-Grade, Offline-First, Secure Android Native Application built with Jetpack Compose, Clean Architecture, and Unidirectional Data Flow (MVI).**
 
-> **BiteFast** là ứng dụng di động đặt đồ ăn và theo dõi đơn hàng theo thời gian thực (Real-time Order Tracking) được xây dựng theo chuẩn **Enterprise Grade (Full 10/10 Standard)**. Dự án kết hợp công nghệ hiện đại nhất trên nền tảng Android Native với kiến trúc phân tầng đa module nghiêm ngặt, cơ chế bảo mật cấp ngân hàng và khả năng tiếp cận toàn diện cho mọi đối tượng người dùng.
-
----
-
-## 🏛️ 1. TỔNG QUAN KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)
-
-Dự án áp dụng mô hình **Enterprise Clean Architecture** kết hợp luồng dữ liệu đơn hướng **MVI / UDF (Unidirectional Data Flow)** nghiêm ngặt:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│               PRESENTATION LAYER (Jetpack Compose M3)           │
-│   • Stateless Composables • Shimmer Skeleton • TalkBack Semantics│
-│   • MVI ViewModels: StateFlow<UiState> + Channel<UiEffect>      │
-└────────────────────────────────┬────────────────────────────────┘
-                                 │ Observes State & Dispatches Events
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│           DOMAIN LAYER (Pure Kotlin JVM - Zero Android SDK)     │
-│   • 35+ UseCases • Domain Models • Repository Interfaces        │
-└────────────────────────────────▲────────────────────────────────┘
-                                 │ Implements Contracts
-                                 │
-┌────────────────────────────────┴────────────────────────────────┐
-│               DATA LAYER (Single Source of Truth)               │
-│   • Repository Implementations với Mutex bảo vệ Race-Condition  │
-│   ┌─────────────────────────────┬─────────────────────────────┐ │
-│   │   Local Encrypted Storage   │     Remote API Services     │ │
-│   │ • Room DB with SQLCipher    │ • Retrofit 2.11 + OkHttp    │ │
-│   │ • AES-256 GCM DataStore     │ • Certificate Pinning       │ │
-│   └─────────────────────────────┴─────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
+[![Kotlin Version](https://img.shields.io/badge/Kotlin-2.1.0-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Compose BOM](https://img.shields.io/badge/Compose_BOM-2024.12.01-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![AGP](https://img.shields.io/badge/AGP-8.7.0-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
+[![Hilt](https://img.shields.io/badge/Hilt-2.52-FF6F00.svg?style=for-the-badge&logo=dagger&logoColor=white)](https://developer.android.com/training/dependency-injection/hilt-android)
+[![Security Level](https://img.shields.io/badge/Security-OWASP_Mobile_Top_10-E53935.svg?style=for-the-badge)](https://owasp.org)
+[![Accessibility](https://img.shields.io/badge/Accessibility-WCAG_2.1_AA-8E24AA.svg?style=for-the-badge)](https://www.w3.org/WAI/standards-guidelines/wcag/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
 
-## 📁 2. CẤU TRÚC MULTI-MODULE (MODULARIZATION STRUCTURE)
+## 🌟 Executive Overview
 
-Hệ thống được module hóa theo phương pháp **Feature-by-Layer + Core Sharing**, quản lý tập trung bằng Gradle Convention Plugins (`build-logic` Kotlin DSL):
+**BiteFast** is a production-ready, enterprise-standard Android food delivery platform designed from the ground up for high reliability, bank-grade security, and accessible user experience. 
+
+Engineered with **Strict Clean Architecture**, the project separates concerns into fully decoupled modules where domain business logic remains 100% pure Kotlin JVM with zero Android SDK dependencies. The presentation layer leverages **Jetpack Compose Material 3** with a reactive **MVI / UDF** paradigm, while the data layer enforces an **Offline-First** single source of truth powered by encrypted Room SQLite and AES-256 GCM DataStore.
+
+---
+
+## 🏛️ System Architecture
+
+BiteFast strictly complies with **Clean Architecture** and **Unidirectional Data Flow (MVI / UDF)**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      PRESENTATION LAYER (UI + MVI)                     │
+│  • Jetpack Compose M3          • Custom Shimmer Skeletons              │
+│  • Stateless Screen Composables • TalkBack Accessible Semantics         │
+│  • BaseViewModel: StateFlow<UiState> + Channel<UiEffect>               │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Observes State & Dispatches Events
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│               DOMAIN LAYER (Pure Kotlin JVM - Zero Android)            │
+│  • 35+ UseCases (Single Responsibility Principle)                      │
+│  • Domain Business Models & Value Objects                              │
+│  • Repository Interfaces (Inversion of Control)                        │
+└───────────────────────────────────▲────────────────────────────────────┘
+                                    │ Implements Contracts
+                                    │
+┌───────────────────────────────────┴────────────────────────────────────┐
+│                    DATA LAYER (Single Source of Truth)                 │
+│  • Mutex-protected Repositories against race-conditions               │
+│  • Bidirectional Mappers: NetworkDTO ↔ DBEntity ↔ DomainModel          │
+│  ┌─────────────────────────────────┬─────────────────────────────────┐ │
+│  │     Local Encrypted Storage     │       Remote API Services       │ │
+│  │  • SQLCipher AES-256 Room DB    │  • Retrofit 2.11 + OkHttp 4     │ │
+│  │  • Encrypted DataStore AES-GCM  │  • Certificate Pinning (SPKI)   │ │
+│  │  • Biometric Keystore MasterKey │  • Real-time WebSocket Client   │ │
+│  └─────────────────────────────────┴─────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Module Dependency Direction (Strictly Enforced)
+
+```mermaid
+graph TD
+    App[":app"] --> FeatureDiscovery[":feature:discovery"]
+    App --> FeatureDetail[":feature:detail"]
+    App --> FeatureCart[":feature:cart"]
+    App --> FeatureCheckout[":feature:checkout"]
+    App --> FeatureOrder[":feature:order"]
+    App --> FeatureTracking[":feature:tracking"]
+    App --> FeatureRating[":feature:rating"]
+    App --> FeatureNotification[":feature:notification"]
+    App --> FeatureVoucher[":feature:voucher"]
+    App --> FeatureProfile[":feature:profile"]
+    App --> FeatureAuth[":feature:auth"]
+
+    FeatureDiscovery & FeatureDetail & FeatureCart & FeatureCheckout & FeatureOrder & FeatureTracking & FeatureRating & FeatureNotification & FeatureVoucher & FeatureProfile & FeatureAuth --> CoreDomain[":core:domain"]
+    FeatureDiscovery & FeatureDetail & FeatureCart & FeatureCheckout & FeatureOrder & FeatureTracking & FeatureRating & FeatureNotification & FeatureVoucher & FeatureProfile & FeatureAuth --> CoreDesignSystem[":core:designsystem"]
+    FeatureDiscovery & FeatureDetail & FeatureCart & FeatureCheckout & FeatureOrder & FeatureTracking & FeatureRating & FeatureNotification & FeatureVoucher & FeatureProfile & FeatureAuth --> CoreModel[":core:model"]
+    FeatureDiscovery & FeatureDetail & FeatureCart & FeatureCheckout & FeatureOrder & FeatureTracking & FeatureRating & FeatureNotification & FeatureVoucher & FeatureProfile & FeatureAuth --> CoreCommon[":core:common"]
+
+    CoreData[":core:data"] --> CoreDomain
+    CoreData --> CoreDatabase[":core:database"]
+    CoreData --> CoreNetwork[":core:network"]
+    CoreData --> CoreDataStore[":core:datastore"]
+    CoreData --> CoreModel
+```
+
+> [!IMPORTANT]
+> **Zero Cross-Feature Coupling:** Feature modules NEVER depend on each other (`:feature:cart` does NOT depend on `:feature:discovery`). Navigation between features is orchestrated centrally at `:app` via route destinations.
+
+---
+
+## 📁 Repository Directory Structure
+
+The project is structured into **18 Gradle modules** organized by layer and feature:
 
 ```
 BiteFast/
 ├── build-logic/                          # Gradle Convention Plugins (Kotlin DSL)
-│   └── convention/                       # Application, Library, Compose, Hilt, Jvm Plugins
-├── gradle/                               # Version Catalog tập trung (libs.versions.toml)
-├── app/                                  # Application Class, Single Activity & Central NavHost
+│   └── convention/                       # Compose, Hilt, Library, Application plugins
+├── gradle/                               # Version Catalog (libs.versions.toml)
+├── app/                                  # Application entry point, NavHost & DI wiring
 │
-├── core/                                 # Các phân hệ chia sẻ dùng chung
-│   ├── model/                            # Data classes & Entities nghiệp vụ thuần khiết
-│   ├── domain/                           # Pure Kotlin UseCases & Repository Interfaces (Zero Android)
-│   ├── data/                             # Cài đặt Repositories & Mappers 2 chiều (DTO ↔ Entity ↔ Domain)
-│   ├── database/                         # Room Database mã hóa toàn phần với SQLCipher
-│   ├── network/                          # OkHttp Certificate Pinning, AuthInterceptor, TokenAuthenticator
-│   ├── datastore/                        # Encrypted Preferences lưu trữ token & cấu hình phiên
-│   ├── designsystem/                     # M3 Theme, Custom Shimmer Brush, Accessible Components
-│   ├── common/                           # Coroutine Dispatchers, Result sealed interface, BaseViewModel
-│   └── testing/                          # Test Doubles, Fake Repositories & Shared Test Rules
+├── core/                                 # Shared Infrastructure & Foundations
+│   ├── model/                            # Pure domain business entities & enums
+│   ├── domain/                           # Pure Kotlin JVM UseCases & Repository contracts
+│   ├── data/                             # Repository implementations, mappers & caching
+│   ├── database/                         # Encrypted Room DB (SQLCipher) & DAOs
+│   ├── network/                          # OkHttp Certificate Pinning, Mock engine & WebSocket
+│   ├── datastore/                        # Jetpack Security MasterKey AES-256 encrypted storage
+│   ├── designsystem/                     # Material 3 Theme, Typography, Shimmer, FoodDishCard
+│   ├── common/                           # Coroutine Dispatchers, String extensions, BaseViewModel
+│   └── testing/                          # Shared Test Doubles, Fakes & JUnit rules
 │
-├── feature/                              # Các phân hệ tính năng giao diện độc lập (Zero Cross-Feature Coupling)
-│   ├── auth/                             # Đăng nhập, Đăng ký, Chế độ Khách (Guest Mode) & Login Gate
-│   ├── discovery/                        # Trang chủ, Danh mục món ăn, Tìm kiếm debounced & Shimmer
-│   ├── detail/                           # Chi tiết nhà hàng, Chọn size, Topping BottomSheet
-│   ├── cart/                             # Giỏ hàng, Stepper 48dp, Xử lý xung đột nhà hàng
-│   ├── checkout/                         # Xác thực địa chỉ, Áp mã Voucher, Thanh toán bảo vệ vân tay
-│   ├── tracking/                         # Bản đồ Google Maps Compose, Shipper Polyline Simulation
-│   ├── order/                            # Lịch sử đơn hàng có bộ lọc & Tính năng Smart Re-Order 1 chạm
-│   ├── profile/                          # Thông tin cá nhân, Sổ địa chỉ giao hàng & Cài đặt app
-│   ├── rating/                           # Đánh giá 1-5 sao, Chọn tag nhanh & Đánh giá ẩn danh
-│   └── notification/                     # Quản lý thông báo đẩy Firebase Cloud Messaging (FCM)
+├── feature/                              # Decoupled Feature Modules (MVI Presentation)
+│   ├── auth/                             # Login, Register, Forgot Password & Guest Mode Gate
+│   ├── discovery/                        # Home Screen, Real-time Search & Filter Chips
+│   ├── detail/                           # Restaurant Menu, Dish BottomSheet & Reviews
+│   ├── cart/                             # Cart Management, Special Instructions & Price Calc
+│   ├── checkout/                         # Multi-payment (COD, MoMo, ZaloPay, Cards) & Crypto
+│   ├── order/                            # Order History, Status Filter & One-click Re-order
+│   ├── tracking/                         # Live Order Tracking, Step Progress & Driver Simulation
+│   ├── rating/                           # 1-5 Star Order & Dish Rating with Experience Tags
+│   ├── voucher/                          # Voucher Wallet & Greedy Best-Voucher Auto-Apply
+│   ├── notification/                     # Notification Center, Tab Filters & Badge Sync
+│   └── profile/                          # Edit Profile, Food Avatar Picker, Address Book & Info
 │
-└── docs/                                 # Tài liệu dự án
-    └── plans/                            # Thư mục lưu trữ toàn bộ các kế hoạch thực thi chi tiết
+└── docs/                                 # Centralized Master Architecture Documentation
+    └── PROJECT_SPECIFICATION.md          # Comprehensive Master Architectural Specification
 ```
 
 ---
 
-## 🚀 3. TÍNH NĂNG NGHIỆP VỤ NỔI BẬT (CORE CAPABILITIES)
+## ⚡ Core Functional Capabilities
 
-1. **Khám Phá & Tìm Kiếm Thông Minh (Discovery & Smart Search):**
-   - Lọc món ăn theo danh mục dạng Carousel mượt mà.
-   - Thanh tìm kiếm tối ưu hóa Debounce 300ms giảm tải truy vấn.
-   - Hiệu ứng tải khung xương (Skeleton Shimmer) phủ ánh sáng tuyến tính 1200ms.
-2. **Chế Độ Khách & Cổng Đăng Nhập (Guest Mode & Login Gate):**
-   - Cho phép khách vãng lai tự do duyệt món, thêm vào giỏ hàng cục bộ mà không bị ép buộc đăng nhập.
-   - Tự động bật `LoginGateBottomSheet` khi thực hiện thao tác nhạy cảm (Thanh toán, Đánh giá, Xem hồ sơ).
-   - Bảo toàn Deep Link: Đăng nhập xong tự động đưa người dùng trở lại đúng màn hình thao tác trước đó.
-3. **Phòng Chống Xung Đột Giỏ Hàng (Restaurant Conflict Resolution):**
-   - Cảnh báo rõ ràng khi người dùng cố thêm món từ nhà hàng khác: Cho phép chọn *"Tạo giỏ hàng mới"* hoặc *"Giữ giỏ hàng hiện tại"*.
-   - Khóa tuần tự hóa `Mutex` tại Repository chống triệt để tình trạng lệch dữ liệu khi bấm tăng/giảm dồn dập (Race-condition free).
-4. **Thanh Toán Bảo Vệ Sinh Trắc Học (Biometric Checkout):**
-   - Tích hợp `BiometricPrompt` cấp độ `BIOMETRIC_STRONG` (Keystore phần cứng) cho các đơn hàng giá trị cao hoặc thanh toán thẻ tín dụng.
-5. **Theo Dõi Đơn Hàng Thời Gian Thực (Live Polyline Tracking):**
-   - Tích hợp Google Maps Compose vẽ tuyến đường giao hàng.
-   - Mô phỏng tài xế di chuyển trơn tru theo thuật toán nội suy tọa độ (Spherical Linear Interpolation).
-6. **Đặt Lại Đơn Cũ 1 Chạm (Smart Re-Order):**
-   - Tự động kiểm tra quán cũ có đang mở cửa không, các món và topping có còn hàng không trước khi nạp lại giỏ.
+### 1. 🔍 Discovery & Intelligent Search
+* **Real-time Accent-Insensitive Search:** Custom `removeAccents` normalization enables instant search for Vietnamese food (e.g., searching `"pho"` instantly matches `"Phở bò tái lăn"`).
+* **Smooth Banner Carousel:** Interactive promotional slides with animated dot indicators.
+* **Category Filter Chips:** One-tap filtering across *Tất cả*, *Cơm*, *Phở & Bún*, *Trà sữa*, *Bánh mì*, *Gợi ý*, *Gần nhất*, and *Đánh giá cao*.
+* **Skeleton Shimmer Screens:** Linear 1200ms gradient shimmer placeholders preventing layout shifts.
 
----
+### 2. 🍽️ Restaurant & Dish Customization
+* **Dynamic Dish BottomSheet:** Interactive modal to choose size, toppings, and quantity before adding to cart.
+* **Star Ratings & Filtered Reviews:** Breakdown of customer reviews with tab filters (All, 5★, 4★, 3★, 2★, 1★).
+* **Instant Favorite Toggle:** One-tap bookmarking for favorite restaurants with local Room persistence.
 
-## 🔒 4. KIẾN TRÚC BẢO MẬT DOANH NGHIỆP (SECURITY 10/10)
+### 3. 🛒 Cart with Conflict Resolution
+* **Restaurant Conflict Guard:** Automatic detection and warning dialog when adding dishes from different restaurants (*"Create new cart"* or *"Keep current cart"*).
+* **Thread-safe Mutation:** Coroutine `Mutex` serialization at the repository layer eliminates race conditions when users tap increment/decrement rapidly.
+* **Order Preparation Notes:** Special culinary and delivery instructions field persisted per dish.
 
-- **Mã Hóa Dữ Liệu Tại Chỗ (Data at Rest Encryption):**
-  - Room SQLite Database được mã hóa toàn bộ bằng **SQLCipher AES-256**. Passphrase được sinh ngẫu nhiên và lưu an toàn trong phần cứng thiết bị (Android Keystore Hardware TEE / StrongBox).
-  - Encrypted DataStore sử dụng Jetpack Security `MasterKey` chuẩn `AES256_GCM`.
-- **Bảo Vệ Kết Nối Mạng (Network Security in Transit):**
-  - **Certificate Pinning (HPKP/SPKI SHA-256):** Khóa cứng mã băm chứng chỉ SSL của máy chủ, ngăn chặn 100% các cuộc tấn công nghe lén Man-in-the-Middle (MITM) qua Proxy (Charles, Burp Suite).
-  - `network_security_config.xml` chặn tuyệt đối mọi lưu lượng không an toàn (HTTP Cleartext Traffic).
-- **Quản Lý Phiên Ngầm An Toàn (Silent Token Renewal):**
-  - OkHttp `TokenAuthenticator` kết hợp `Mutex` giải quyết triệt để tình trạng bão refresh token khi nhiều request đồng thời nhận mã 401 Unauthorized.
-- **Che Giấu Khóa Nhạy Cảm Bằng NDK C++:**
-  - Ẩn toàn bộ API Key nhạy cảm trong thư viện native C++ JNI với thuật toán XOR Masking, chống decompile ngược bytecode.
+### 4. 💳 Bank-Grade Secure Checkout
+* **Diverse Payment Methods:** Supports Cash on Delivery (COD), MoMo E-Wallet, ZaloPay, and Credit/Debit Cards.
+* **Sensitive Data Masking:** Dynamic card number formatting and masking (`•••• •••• •••• 1234`).
+* **Hardware Biometric Guard:** Keystore-backed `BiometricPrompt` verification for high-value orders and cards.
 
----
+### 5. 📍 Real-Time Order Tracking & Driver Simulation
+* **Visual Step Progression:** Distinct states (*Confirmed ➔ Preparing ➔ Delivering ➔ Completed*).
+* **Live Driver Interpolation:** Mock WebSocket feed delivering continuous coordinate updates and dynamic arrival estimates.
+* **Driver Contact Actions:** Direct phone call and in-app message shortcuts.
 
-## ♿ 5. HỆ THỐNG TIẾP CẬN TOÀN DIỆN (ACCESSIBILITY WCAG 2.1 AA)
+### 6. 🎟️ Smart Voucher Wallet & Recommendation
+* **Voucher Wallet Screen:** Categorized voucher list with validity dates, discount percentages, and minimum order requirements.
+* **Greedy Best-Voucher Algorithm:** Evaluates all eligible vouchers against the current cart subtotal and automatically pre-selects the optimal discount.
 
-- **Hợp Nhất Ngữ Nghĩa (Semantics Merging):** Áp dụng `Modifier.clearAndSetSemantics` trên các thẻ món ăn và nhà hàng để TalkBack đọc một câu mô tả hoàn chỉnh, tránh đọc vụn vặt từng phần tử văn bản.
-- **Custom Accessibility Actions:** Giúp người khiếm thị vuốt lên/xuống để tăng giảm số lượng món trên `QuantitySelector` mà không cần dò tìm nút bấm nhỏ.
-- **Touch Target Chuẩn:** Mọi nút bấm, chip và checkbox đều áp dụng diện tích chạm tối thiểu **48dp × 48dp**.
-- **Dynamic Text Scaling 200%:** Hỗ trợ phóng to cỡ chữ hệ thống lên 200% không làm tràn viền hay vỡ bố cục giao diện.
-- **Hỗ Trợ Reduce Motion:** Tự động tắt hiệu ứng chuyển động vô hạn đối với người dùng mắc hội chứng tiền đình.
+### 7. 👤 User Profile & Customization
+* **Edit Profile:** Change name, phone number, and choose among 6 custom food avatars (🍔 Burger, 🍕 Pizza, ☕ Coffee, 🍜 Ramen, 🍣 Sushi, 🌮 Taco).
+* **Account Email Display:** Fixed email security indicator.
+* **Address Book Management:** Dedicated delivery address manager with default address selection.
+* **About BiteFast:** Built-in modal dialog displaying app version (1.0.0), platform specs, and developer information.
+
+### 8. 🔔 In-App Notification Hub
+* **Category Tabs:** Segregated into *Tất cả (All)*, *Đơn hàng (Orders)*, *Khuyến mãi (Promotions)*, and *Hệ thống (System)*.
+* **Unread Badge Synchronization:** Real-time badge counter reflecting unread notifications on the bottom navigation bar.
+* **Batch Operations:** Support for *"Mark All as Read"* and clearing notification history.
 
 ---
 
-## 🧪 6. CHIẾN LƯỢC KIỂM THỬ (TEST PYRAMID & COVERAGE TARGETS)
+## 🔒 Enterprise Security Standard (10/10)
+
+| Security Domain | Implementation | Security Benefit |
+|---|---|---|
+| **Data at Rest** | Room SQLite encrypted with **SQLCipher AES-256** | Zero plain-text leaks if the physical device is compromised |
+| **Key Storage** | **Android Keystore (Hardware TEE / StrongBox)** | Keys cannot be exported or extracted from hardware |
+| **Preferences** | Jetpack Security **MasterKey AES-256 GCM** | Token and session encryption in `EncryptedSharedPreferences` |
+| **Network in Transit** | **Certificate Pinning (HPKP/SPKI SHA-256)** | 100% prevention of Man-in-the-Middle (MITM) proxy snooping |
+| **Cleartext Traffic** | `android:usesCleartextTraffic="false"` | Enforces TLS 1.3 across all network interactions |
+| **Token Refresh** | OkHttp `TokenAuthenticator` + `Mutex` | Prevents token refresh storm during concurrent 401 responses |
+| **Code Protection** | R8 Full Mode + ProGuard Obfuscation | Bytecode optimization, symbol stripping, and reverse engineering prevention |
+
+---
+
+## ♿ Accessibility Compliance (WCAG 2.1 AA)
+
+* **48dp × 48dp Minimum Touch Targets:** Strictly enforced on all interactive buttons, chips, and icons.
+* **TalkBack Semantic Merging:** Uses `Modifier.clearAndSetSemantics` on composite cards to announce natural, comprehensive descriptions rather than fragmented text.
+* **Custom Accessibility Actions:** Accessibility gestures for increasing/decreasing quantities without targeting small +/- buttons.
+* **Dynamic 200% Font Scaling:** Layouts are built with flexible Compose constraints that gracefully scale text without clipping.
+* **Reduce Motion Support:** Respects system accessibility motion settings to disable looping animations for sensitive users.
+
+---
+
+## 🧪 Testing Pyramid & Quality Gates
 
 ```
-        / \
-       /   \        10% UI Tests (Compose UI Semantics & Robot Tests)
-      /-----\
-     /       \      20% Integration Tests (MockWebServer, Room Encrypted In-Memory)
-    /---------\
-   /           \    70% Unit Tests (Pure Kotlin JVM: UseCases, ViewModels, Repositories)
-  /-------------\
+         /\
+        /  \        10% UI Tests (Compose UI Semantics & Robot Pattern)
+       /----\
+      /      \      20% Integration Tests (MockWebServer, Room In-Memory Encrypted)
+     /--------\
+    /          \    70% Unit Tests (JUnit 5 + MockK + Turbine on Pure JVM)
+   /------------\
 ```
-- **Domain Layer:** JUnit 5 + MockK + Turbine ➔ Cam kết độ bao phủ **≥ 95%**.
-- **Data & ViewModel Layer:** JUnit 5 + MockWebServer ➔ Cam kết độ bao phủ **≥ 85%**.
-- **Chốt chặn CI/CD:** Hệ thống Kover tự động từ chối build nếu không đạt ngưỡng tối thiểu 85%.
+
+* **Domain Layer Coverage:** ≥ 95% target (Pure Kotlin JVM, rapid test execution in milliseconds).
+* **Data & ViewModel Coverage:** ≥ 85% target (Turbine testing for MVI StateFlow and Channel effects).
+* **Kover Quality Gate:** Automated build break if code coverage falls below the 85% threshold.
 
 ---
 
-## 🛠️ 7. HƯỚNG DẪN CÀI ĐẶT & BIÊN DỊCH (GETTING STARTED)
+## 🛠️ Tech Stack & Dependencies
 
-### Yêu Cầu Hệ Thống:
-- **JDK:** OpenJDK 17 hoặc 21 LTS.
-- **Android Studio:** Ladybug (2024.2.1+) hoặc Koala.
-- **Android SDK:** Compile SDK 35, Min SDK 24.
+| Category | Technology | Version | Purpose |
+|---|---|---|---|
+| **Language** | Kotlin | `2.1.0` | Primary language with strict coroutines & flow |
+| **UI Framework** | Jetpack Compose | `BOM 2024.12.01` | Declarative reactive UI framework |
+| **Design System** | Material 3 | `1.3.1` | Modern Material design components & tokens |
+| **Dependency Injection** | Dagger Hilt | `2.52` | Compile-time dependency injection |
+| **Local Database** | Room + SQLCipher | `2.6.1` / `4.5.4` | Encrypted offline-first relational database |
+| **Network & REST** | Retrofit + OkHttp | `2.11.0` / `4.12.0` | REST API communication & certificate pinning |
+| **Serialization** | Kotlinx Serialization | `1.7.3` | High-performance JSON parser |
+| **Secure Storage** | Jetpack Security Crypto | `1.1.0-alpha06` | AES-256 GCM encrypted preferences |
+| **Image Loading** | Coil Compose | `2.7.0` | Asynchronous image loading with memory cache |
+| **Asynchronous** | Kotlinx Coroutines | `1.9.0` | Non-blocking reactive programming |
+| **Navigation** | Navigation Compose | `2.8.5` | Type-safe single-activity navigation |
+| **Unit Testing** | JUnit 5 + MockK + Turbine | `5.11.3` / `1.13.13` | Unit tests & Coroutine Flow verification |
 
-### Các Lệnh Biên Dịch Cơ Bản:
+---
+
+## 📚 Technical Documentation
+
+For the complete technical blueprint, implementation roadmap, module-by-module contract breakdown, and architectural deep-dive, consult the master document:
+
+* 📄 **[Master Architectural Specification (docs/PROJECT_SPECIFICATION.md)](docs/PROJECT_SPECIFICATION.md)** — Comprehensive single-source specification covering all 6 phases of architecture, security, business logic, and implementation details.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+* **JDK:** OpenJDK 17 or OpenJDK 21 LTS
+* **Android Studio:** Ladybug (2024.2.1+) or Koala Feature Drop
+* **Android SDK:** Compile SDK `35`, Min SDK `24`, Target SDK `35`
+
+### Build & Run Commands
+
 ```bash
-# Clone dự án về máy
-git clone <repository_url>
+# 1. Clone the repository
+git clone https://github.com/NHTung-0801/BiteFast.git
 cd BiteFast
 
-# Kiểm tra cú pháp và chạy toàn bộ Unit Tests
+# 2. Check syntax & run all unit tests across all 18 modules
 ./gradlew test
 
-# Chạy báo cáo độ bao phủ mã nguồn Kover
+# 3. Generate Kover code coverage report
 ./gradlew koverHtmlReport
 
-# Biên dịch gói cài đặt Debug APK
+# 4. Assemble Debug APK
 ./gradlew assembleDebug
 
-# Biên dịch gói phát hành Release tối ưu hóa ProGuard/R8
-./gradlew assembleRelease
+# 5. Install and run directly on a connected device/emulator
+./gradlew :app:installDebug
 ```
 
 ---
 
-## 📚 8. HỆ THỐNG TÀI LIỆU DỰ ÁN (DOCUMENTATION)
+## 👨‍💻 Author & Lead Architect
 
-Mọi kế hoạch phát triển và tài liệu thiết kế đều được quản lý tại:
-- 📋 [docs/plans/README.md](docs/plans/README.md) — Mục lục và quy ước quản lý kế hoạch.
-- 🎯 [docs/plans/plan_master_execution_roadmap.md](docs/plans/plan_master_execution_roadmap.md) — Lộ trình thực thi chi tiết 6 giai đoạn.
-- 🎨 [docs/plans/plan_ui_design_specs_architecture.md](docs/plans/plan_ui_design_specs_architecture.md) — Kế hoạch hệ thống file thiết kế giao diện đồng bộ.
-- 📐 [bitefast_project_plan.md](bitefast_project_plan.md) — Bản đặc tả kỹ thuật kiến trúc gốc 10/10 Enterprise.
+* **Author:** **Nguyễn Hoàng Tùng**
+* **Role:** Lead Mobile Software Engineer & System Architect
+* **Email:** [tungnh0801@gmail.com](mailto:tungnh0801@gmail.com)
+* **GitHub:** [@NHTung-0801](https://github.com/NHTung-0801)
+* **Project Repository:** [NHTung-0801/BiteFast](https://github.com/NHTung-0801/BiteFast)
 
 ---
 
-> **BiteFast Engineering Team** — *Xây dựng với niềm đam mê về Code sạch, Kiến trúc vững chắc và Trải nghiệm người dùng đỉnh cao.*
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+```
+Copyright (c) 2026 Nguyễn Hoàng Tùng (tungnh0801@gmail.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software.
+```
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ by <strong>Nguyễn Hoàng Tùng</strong> — Dedicated to clean code, robust architecture, and exceptional user experiences.</sub>
+</p>
