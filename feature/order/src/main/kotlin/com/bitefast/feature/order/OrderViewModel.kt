@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.order
+package com.bitefast.feature.order
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -18,10 +18,10 @@ import javax.inject.Inject
 // ─── Filter Tab ──────────────────────────────────────────────────────────────
 
 enum class OrderFilterTab(val label: String) {
-    ALL("Tat ca"),
-    ACTIVE("Dang giao"),
-    COMPLETED("Hoan thanh"),
-    CANCELED("Da huy"),
+    ALL("Tất cả"),
+    ACTIVE("Đang giao"),
+    COMPLETED("Hoàn thành"),
+    CANCELED("Đã hủy"),
 }
 
 // ─── UiState ─────────────────────────────────────────────────────────────────

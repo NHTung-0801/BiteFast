@@ -1,7 +1,8 @@
-﻿package com.bitefast.feature.order
+package com.bitefast.feature.order
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,13 +19,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import com.bitefast.core.designsystem.component.shimmerBrush
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -63,6 +69,9 @@ import java.util.Locale
 fun OrderRoute(
     onNavigateToTracking: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToOrderDetail: (String) -> Unit = {},
+    onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = onNavigateBack,
     viewModel: OrderViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -82,6 +91,9 @@ fun OrderRoute(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onEvent = viewModel::onEvent,
+        onNavigateToOrderDetail = onNavigateToOrderDetail,
+        onNavigateBack = onNavigateBack,
+        onNavigateToHome = onNavigateToHome,
     )
 }
 
@@ -93,6 +105,9 @@ fun OrderScreen(
     uiState: OrderUiState,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onEvent: (OrderUiEvent) -> Unit,
+    onNavigateToOrderDetail: (String) -> Unit = {},
+    onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = onNavigateBack,
 ) {
     // Cancel dialog
     if (uiState.showCancelDialog) {
@@ -109,12 +124,21 @@ fun OrderScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                },
                 title = {
                     Column {
-                        Text("Don hang cua toi", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                        Text("Đơn hàng của tôi", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                         if (uiState.activeOrders.isNotEmpty()) {
                             Text(
-                                "${uiState.activeOrders.size} don dang xu ly",
+                                "${uiState.activeOrders.size} đơn đang xử lý",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = OrangePrimary,
                             )
@@ -154,19 +178,27 @@ fun OrderScreen(
             }
 
             // Orders list or empty state
-            if (uiState.filteredOrders.isEmpty() && !uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    EmptyState(
-                        title = "Chua co don hang nao",
-                        subtitle = when (uiState.selectedTab) {
-                            OrderFilterTab.ACTIVE -> "Hien tai khong co don hang nao dang giao"
-                            OrderFilterTab.COMPLETED -> "Chua co don hang nao hoan thanh"
-                            OrderFilterTab.CANCELED -> "Chua co don hang nao bi huy"
-                            else -> "Hay kham pha va dat mon an ngon!"
-                        },
-                    )
+            when {
+                uiState.isLoading -> {
+                    OrderHistorySkeleton()
                 }
-            } else {
+                uiState.filteredOrders.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        EmptyState(
+                            title = "Chưa có đơn hàng nào",
+                            subtitle = when (uiState.selectedTab) {
+                                OrderFilterTab.ACTIVE -> "Hiện tại không có đơn hàng nào đang giao"
+                                OrderFilterTab.COMPLETED -> "Chưa có đơn hàng nào hoàn thành"
+                                OrderFilterTab.CANCELED -> "Chưa có đơn hàng nào bị hủy"
+                                else -> "Hãy khám phá và đặt món ăn ngon!"
+                            },
+                            icon = Icons.Default.Receipt,
+                            actionText = "Đặt món ngay",
+                            onActionClick = onNavigateToHome,
+                        )
+                    }
+                }
+                else -> {
                 LazyColumn(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -191,7 +223,7 @@ fun OrderScreen(
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "${uiState.activeOrders.size} don hang dang duoc xu ly / giao den ban",
+                                    "${uiState.activeOrders.size} đơn hàng đang được xử lý / giao đến bạn",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = OrangePrimary,
                                 )
@@ -202,6 +234,7 @@ fun OrderScreen(
                     items(uiState.filteredOrders, key = { it.id }) { order ->
                         OrderCard(
                             order = order,
+                            onClick = { onNavigateToOrderDetail(order.id) },
                             onTrack = { onEvent(OrderUiEvent.ClickTrackOrder(order.id)) },
                             onReorder = { onEvent(OrderUiEvent.ClickReorder(order)) },
                             onCancel = { onEvent(OrderUiEvent.RequestCancelOrder(order)) },
@@ -213,12 +246,64 @@ fun OrderScreen(
         }
     }
 }
+}
+
+@Composable
+private fun OrderHistorySkeleton(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        repeat(3) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(40.dp).clip(CircleShape).shimmerBrush())
+                            Spacer(Modifier.width(10.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = Modifier.width(130.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmerBrush())
+                                Box(modifier = Modifier.width(80.dp).height(12.dp).clip(RoundedCornerShape(4.dp)).shimmerBrush())
+                            }
+                        }
+                        Box(modifier = Modifier.width(70.dp).height(24.dp).clip(RoundedCornerShape(12.dp)).shimmerBrush())
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    Box(modifier = Modifier.fillMaxWidth(0.7f).height(14.dp).clip(RoundedCornerShape(4.dp)).shimmerBrush())
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(modifier = Modifier.width(100.dp).height(18.dp).clip(RoundedCornerShape(4.dp)).shimmerBrush())
+                        Box(modifier = Modifier.width(90.dp).height(36.dp).clip(RoundedCornerShape(8.dp)).shimmerBrush())
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun OrderCard(
     order: Order,
+    onClick: () -> Unit,
     onTrack: () -> Unit,
     onReorder: () -> Unit,
     onCancel: () -> Unit,
@@ -234,7 +319,10 @@ private fun OrderCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = modifier.fillMaxWidth().animateContentSize(),
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable { onClick() },
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header: restaurant name + status chip

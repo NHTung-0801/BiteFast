@@ -4,6 +4,14 @@ plugins {
     id("bitefast.android.hilt")
 }
 
+android {
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
@@ -17,4 +25,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.compose.icons.extended)
     implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.junit5)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }
+
