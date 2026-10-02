@@ -1,4 +1,4 @@
-﻿package com.bitefast.feature.auth
+package com.bitefast.feature.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -65,6 +65,7 @@ import com.bitefast.core.designsystem.theme.OrangePrimary
 fun LoginRoute(
     onNavigateToHome: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
@@ -88,6 +89,7 @@ fun LoginRoute(
         uiState = uiState,
         onEvent = viewModel::onEvent,
         onNavigateToRegister = onNavigateToRegister,
+        onNavigateToForgotPassword = onNavigateToForgotPassword,
         snackbarHostState = snackbarHostState,
         modifier = modifier
     )
@@ -98,6 +100,7 @@ fun LoginScreen(
     uiState: AuthUiState,
     onEvent: (AuthUiEvent) -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit = {},
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
@@ -225,7 +228,22 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Forgot password link
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    text = "Quên mật khẩu?",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = OrangePrimary,
+                    modifier = Modifier.clickable { onNavigateToForgotPassword() }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Primary CTA: Login Button
             BiteFastButton(
