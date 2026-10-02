@@ -11,4 +11,5 @@ interface AuthRepository {
     suspend fun logout()
     suspend fun enableGuestMode()
     suspend fun getCurrentUser(): User?
+    suspend fun updateProfile(name: String, phone: String, avatar: String?): User
 }

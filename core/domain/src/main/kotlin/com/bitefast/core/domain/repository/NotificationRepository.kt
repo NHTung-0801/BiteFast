@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface NotificationRepository {
     fun getNotifications(): Flow<List<Notification>>
+    suspend fun addNotification(notification: Notification)
     suspend fun markAsRead(id: String)
     suspend fun markAllAsRead()
     suspend fun deleteNotification(id: String)
