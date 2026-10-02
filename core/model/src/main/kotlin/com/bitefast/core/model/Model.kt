@@ -88,7 +88,10 @@ data class MenuItem(
     val isSpicy: Boolean = false,
     val isPopular: Boolean = false,
     val preparationTime: Int = 0,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val rating: Double = 4.8,
+    val reviewCount: Int = 50,
+    val isFavorite: Boolean = false
 )
 
 @Serializable
@@ -229,5 +232,27 @@ data class Notification(
     val type: String = "",
     val data: Map<String, String> = emptyMap(),
     val isRead: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Serializable
+enum class FavoriteType {
+    DISH,
+    RESTAURANT
+}
+
+@Serializable
+data class FavoriteItem(
+    val id: String = "",
+    val type: FavoriteType = FavoriteType.DISH,
+    val targetId: String = "",
+    val name: String = "",
+    val description: String = "",
+    val price: Double = 0.0,
+    val imageUrl: String = "",
+    val rating: Double = 4.8,
+    val restaurantId: String = "",
+    val restaurantName: String = "",
+    val category: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
