@@ -95,14 +95,29 @@ class ProfileViewModelTest {
     }
 
     @Test
-    @DisplayName("ToggleBiometric updates state")
-    fun toggleBiometric_updatesState() = runTest(testDispatcher) {
+    @DisplayName("ToggleNotification updates state")
+    fun toggleNotification_updatesState() = runTest(testDispatcher) {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onEvent(ProfileUiEvent.ToggleBiometric(true))
+        viewModel.onEvent(ProfileUiEvent.ToggleNotification(false))
         testDispatcher.scheduler.runCurrent()
 
-        assertEquals(true, viewModel.uiState.value.isBiometricEnabled)
+        assertEquals(false, viewModel.uiState.value.isNotificationEnabled)
+    }
+
+    @Test
+    @DisplayName("ClickAbout and DismissAboutDialog toggle about dialog state")
+    fun aboutDialog_updatesState() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onEvent(ProfileUiEvent.ClickAbout)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(true, viewModel.uiState.value.showAboutDialog)
+
+        viewModel.onEvent(ProfileUiEvent.DismissAboutDialog)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals(false, viewModel.uiState.value.showAboutDialog)
     }
 }

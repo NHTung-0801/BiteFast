@@ -66,7 +66,7 @@ import com.bitefast.core.designsystem.component.shimmerBrush
 import com.bitefast.core.designsystem.theme.OrangePrimaryDark
 import com.bitefast.core.designsystem.theme.OrangePrimary
 
-// â”€â”€â”€ Route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Route ──────────────────────────────────────────────────────────
 
 @Composable
 fun ProfileRoute(
@@ -251,7 +251,7 @@ fun ProfileScreen(
     }
 }
 
-// â”€â”€â”€ Profile Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Profile Header ──────────────────────────────────────────────────
 
 @Composable
 private fun ProfileHeader(uiState: ProfileUiState, onEvent: (ProfileUiEvent) -> Unit) {
@@ -305,7 +305,7 @@ private fun ProfileHeader(uiState: ProfileUiState, onEvent: (ProfileUiEvent) -> 
     }
 }
 
-// â”€â”€â”€ Menu Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Menu Section ────────────────────────────────────────────────────
 
 @Composable
 private fun MenuSection(title: String, content: @Composable () -> Unit) {
@@ -406,7 +406,7 @@ private fun SwitchMenuItem(
     }
 }
 
-// â”€â”€â”€ Logout Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Logout Dialog ───────────────────────────────────────────────────
 
 @Composable
 private fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
